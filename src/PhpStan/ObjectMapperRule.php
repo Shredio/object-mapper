@@ -14,6 +14,7 @@ use PHPStan\Type\VerbosityLevel;
 use Shredio\ObjectMapper\Exception\RuleErrorException;
 use Shredio\ObjectMapper\ObjectMapper;
 use Shredio\PhpStanHelpers\Exception\InvalidTypeException;
+use Shredio\PhpStanHelpers\Exception\NonConstantTypeException;
 use Shredio\PhpStanHelpers\PhpStanReflectionHelper;
 
 /**
@@ -114,16 +115,20 @@ final readonly class ObjectMapperRule implements Rule
 		$readableProperties = iterator_to_array($this->reflectionHelper->getReadablePropertiesFromReflection($sourceClassReflection), preserve_keys: true);
 
 		try {
-			$options = $this->reflectionHelper->getStringKeyWithTypeFromConstantArray(
-				$optionsArg === null ? null : $scope->getType($optionsArg->value),
-			);
-		} catch (InvalidTypeException) {
+			if ($optionsArg === null) {
+				$options = [];
+			} else {
+				$options = $this->reflectionHelper->getNonEmptyStringKeyWithTypeFromConstantArray(
+					$scope->getType($optionsArg->value)
+				);
+			}
+		} catch (InvalidTypeException|NonConstantTypeException) {
 			return [
 				RuleErrorBuilder::message(sprintf(
 					'Method %s::%s() expects the third argument to be a constant array type, but got %s.',
 					$calledOnClassNameType->describe(VerbosityLevel::typeOnly()),
 					self::MethodName,
-					$optionsArg === null ? 'null' : $scope->getType($optionsArg->value)->describe(VerbosityLevel::typeOnly()),
+					$scope->getType($optionsArg->value)->describe(VerbosityLevel::typeOnly()),
 				))
 					->identifier($this->id('invalidOptions'))
 					->build(),
@@ -245,8 +250,8 @@ final readonly class ObjectMapperRule implements Rule
 		}
 
 		try {
-			return $this->reflectionHelper->getStringKeyWithTypeFromConstantArray($options['values']);
-		} catch (InvalidTypeException) {
+			return $this->reflectionHelper->getNonEmptyStringKeyWithTypeFromConstantArray($options['values']);
+		} catch (InvalidTypeException|NonConstantTypeException) {
 			throw new RuleErrorException([
 				RuleErrorBuilder::message(sprintf(
 					'The "values" option passed must be a constant array, but got %s.',

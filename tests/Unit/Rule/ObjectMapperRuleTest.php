@@ -2,7 +2,6 @@
 
 namespace Tests\Unit\Rule;
 
-use PHPStan\Rules\Rule;
 use PHPStan\Testing\RuleTestCase;
 use Shredio\ObjectMapper\PhpStan\ObjectMapperRule;
 use Shredio\PhpStanHelpers\PhpStanReflectionHelper;
@@ -10,7 +9,7 @@ use Shredio\PhpStanHelpers\PhpStanReflectionHelper;
 final class ObjectMapperRuleTest extends RuleTestCase
 {
 
-	protected function getRule(): Rule
+	protected function getRule(): ObjectMapperRule
 	{
 		return new ObjectMapperRule(new PhpStanReflectionHelper());
 	}

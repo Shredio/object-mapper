@@ -10,3 +10,4 @@ parameters:
 		checkedExceptionClasses:
 			- Shredio\ObjectMapper\Exception\RuntimeException
 			- Shredio\ObjectMapper\Exception\RuleErrorException
+			- Shredio\PhpStanHelpers\Exception\RuntimeException

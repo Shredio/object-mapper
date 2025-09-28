@@ -1,0 +1,7 @@
+services:
+	-
+		class: Shredio\ObjectMapper\PhpStan\DataTransferObjectToArrayExtensionType
+		tags: [phpstan.broker.dynamicMethodReturnTypeExtension, phpstan.broker.dynamicStaticMethodReturnTypeExtension]
+
+includes:
+	- ../../../vendor/shredio/phpstan-helpers/extension.neon
