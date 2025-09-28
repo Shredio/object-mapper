@@ -1,0 +1,12 @@
+parameters:
+	level: max
+	paths:
+		- src
+	exceptions:
+		check:
+			missingCheckedExceptionInThrows: true
+			tooWideThrowType: true
+		implicitThrows: false
+		checkedExceptionClasses:
+			- Shredio\ObjectMapper\Exception\RuntimeException
+			- Shredio\ObjectMapper\Exception\RuleErrorException
