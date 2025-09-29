@@ -250,6 +250,15 @@ final class ObjectMapperRuleTestCases
 		]);
 	}
 
+	public function validNullableWithUselessConverter(): void
+	{
+		$this->mapper->map(new StdClassOrNullProperty(), StdClassOrNullProperty::class, [
+			'converters' => [
+				[DateTimeInterface::class, fn (DateTimeInterface $date) => $date->format('Y-m-d')]
+			],
+		]);
+	}
+
 }
 
 class EmptyClass {}
@@ -284,6 +293,10 @@ class ComplexDateTimeProperty {
 
 class DateTimeOrNullProperty {
 	public ?DateTimeInterface $value;
+}
+
+class StdClassOrNullProperty {
+	public ?stdClass $value;
 }
 
 class IntProperty {

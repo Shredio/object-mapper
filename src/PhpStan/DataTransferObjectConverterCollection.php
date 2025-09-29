@@ -3,10 +3,9 @@
 namespace Shredio\ObjectMapper\PhpStan;
 
 use PHPStan\Type\CompoundType;
+use PHPStan\Type\NeverType;
 use PHPStan\Type\Type;
 use PHPStan\Type\TypeCombinator;
-use PHPStan\Type\TypeUtils;
-use PHPStan\Type\UnionType;
 
 final readonly class DataTransferObjectConverterCollection
 {
@@ -22,6 +21,10 @@ final readonly class DataTransferObjectConverterCollection
 
 	public function getRealType(Type $type): Type
 	{
+		if ($type instanceof NeverType) {
+			return $type;
+		}
+
 		foreach ($this->converters as $converter) {
 			if (!$type instanceof CompoundType) {
 				if ($converter->acceptType->accepts($type, true)->yes()) {
@@ -30,8 +33,11 @@ final readonly class DataTransferObjectConverterCollection
 
 				continue;
 			}
-			$newType = $type->tryRemove($converter->acceptType);
-			if ($newType === null) {
+			$newType = TypeCombinator::remove($type, $converter->acceptType);
+			if ($newType instanceof NeverType) {
+				return $converter->returnType;
+			}
+			if ($newType->equals($type)) {
 				continue;
 			}
 
