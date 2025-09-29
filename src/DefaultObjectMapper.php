@@ -54,7 +54,7 @@ final readonly class DefaultObjectMapper implements ObjectMapper
 	{
 		$result = [];
 		foreach ($sources as $source) {
-			$result[] = $this->map($source, $target, $options);
+			$result[] = $this->map($source, $target, $options); // @phpstan-ignore argument.type
 		}
 
 		return $result;
