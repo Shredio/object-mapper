@@ -5,7 +5,7 @@ namespace Shredio\ObjectMapper\PhpStan\Error;
 use PHPStan\Rules\IdentifierRuleError;
 use PHPStan\Rules\RuleErrorBuilder;
 
-final class ErrorCollector
+final class CollectErrorReporter implements ErrorReporter
 {
 
 	/** @var list<IdentifierRuleError> */
@@ -32,6 +32,15 @@ final class ErrorCollector
 		}
 
 		$this->errors[] = $builder->build();
+	}
+
+	public function isCollector(): bool
+	{
+		return true;
+	}
+
+	public function error(): void
+	{
 	}
 
 }

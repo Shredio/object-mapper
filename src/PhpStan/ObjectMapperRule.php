@@ -13,6 +13,7 @@ use PHPStan\Type\TypeCombinator;
 use PHPStan\Type\VerbosityLevel;
 use Shredio\ObjectMapper\Exception\RuleErrorException;
 use Shredio\ObjectMapper\ObjectMapper;
+use Shredio\ObjectMapper\PhpStan\Error\CollectErrorReporter;
 use Shredio\PhpStanHelpers\Exception\InvalidTypeException;
 use Shredio\PhpStanHelpers\Exception\NonConstantTypeException;
 use Shredio\PhpStanHelpers\PhpStanReflectionHelper;
@@ -126,33 +127,18 @@ final readonly class ObjectMapperRule implements Rule
 		$writableProperties = $this->reflectionHelper->getWritablePropertiesWithConstructorFromReflection($targetClassReflection);
 		$readableProperties = iterator_to_array($this->reflectionHelper->getReadablePropertiesFromReflection($sourceClassReflection), preserve_keys: true);
 
-		try {
-			if ($optionsArg === null) {
-				$options = [];
-			} else {
-				$options = $this->reflectionHelper->getNonEmptyStringKeyWithTypeFromConstantArray(
-					$scope->getType($optionsArg->value)
-				);
-			}
-		} catch (InvalidTypeException|NonConstantTypeException) {
-			return [
-				RuleErrorBuilder::message(sprintf(
-					'Method %s::%s() expects the third argument to be a constant array type, but got %s.',
-					$calledOnClassNameType->describe(VerbosityLevel::typeOnly()),
-					self::MethodName,
-					$scope->getType($optionsArg->value)->describe(VerbosityLevel::typeOnly()),
-				))
-					->identifier($this->id('invalidOptions'))
-					->build(),
-			];
+		$options = $this->getOptions(
+			$scope,
+			$optionsArg === null ? null : $scope->getType($optionsArg->value),
+			$calledOnClassNameType->describe(VerbosityLevel::typeOnly()),
+			$errorReporter = new CollectErrorReporter('objectMapper'),
+		);
+		if ($errorReporter->errors !== []) {
+			return $errorReporter->errors;
 		}
 
-		try {
-			$staticValues = $this->getStaticValues($scope, $options);
-			$allowNullableWithoutValue = $this->getAllowNullableWithoutValue($options);
-		} catch (RuleErrorException $e) {
-			return $e->ruleErrors;
-		}
+		$staticValues = $options['values'];
+		$allowNullableWithoutValue = $options['allowNullableWithoutValue'];
 
 		$errors = [];
 		foreach ($writableProperties as $propertyToWrite) {
@@ -244,120 +230,62 @@ final readonly class ObjectMapperRule implements Rule
 		return $errors;
 	}
 
+	/**
+	 * @return array{ values: array<non-empty-string, Type>, allowNullableWithoutValue: bool }
+	 */
+	private function getOptions(Scope $scope, ?Type $type, string $className, CollectErrorReporter $errorReporter): array
+	{
+		if ($type === null) {
+			return $this->defaultOptions();
+		}
+
+		try {
+			$options = $this->reflectionHelper->getNonEmptyStringKeyWithTypeFromConstantArray($type);
+		} catch (InvalidTypeException|NonConstantTypeException) {
+			$errorReporter->addError(
+				sprintf(
+					'Method %s::%s() expects the third argument to be a constant array type, but got %s.',
+					$className,
+					self::MethodName,
+					$type->describe(VerbosityLevel::typeOnly()),
+				),
+				'invalidOptions',
+			);
+
+			return $this->defaultOptions();
+		}
+
+		$optionsParser = new PhpStanOptionsParser(
+			$this->reflectionHelper,
+			$scope,
+			$options,
+			$className,
+			self::MethodName,
+			'options',
+			$errorReporter,
+		);
+
+		$values = $optionsParser->values('values');
+		$values = $optionsParser->valuesFn('valuesFn', 'values', $values);
+		$allowNullableWithoutValue = $optionsParser->bool('allowNullableWithoutValue', false);
+
+		return [
+			'values' => $values,
+			'allowNullableWithoutValue' => $allowNullableWithoutValue,
+		];
+	}
+
+	/**
+	 * @return array{ values: array<non-empty-string, Type>, allowNullableWithoutValue: bool }
+	 */
+	private function defaultOptions(): array
+	{
+		return ['values' => [], 'allowNullableWithoutValue' => false];
+	}
+
 	private function id(string $name): string
 	{
 		return sprintf('objectMapper.%s', $name);
-	}
-
-	/**
-	 * @param array<string, Type> $options
-	 * @return array<non-empty-string, Type>
-	 *
-	 * @throws RuleErrorException
-	 */
-	private function getStaticValues(Scope $scope, array $options): array
-	{
-		if (!isset($options['values'])) {
-			return $this->getStaticValuesFn($scope, $options);
-		}
-
-		try {
-			return $this->getStaticValuesFn(
-				$scope,
-				$options,
-				$this->reflectionHelper->getNonEmptyStringKeyWithTypeFromConstantArray($options['values']),
-			);
-		} catch (InvalidTypeException|NonConstantTypeException) {
-			throw new RuleErrorException([
-				RuleErrorBuilder::message(sprintf(
-					'The "values" option passed must be a constant array, but got %s.',
-					$options['values']->describe(VerbosityLevel::typeOnly()),
-				))
-					->identifier($this->id('invalidValues'))
-					->build(),
-			]);
-		}
-	}
-
-	/**
-	 * @param array<string, Type> $options
-	 * @param array<non-empty-string, Type> $staticValues
-	 * @return array<non-empty-string, Type>
-	 *
-	 * @throws RuleErrorException
-	 */
-	private function getStaticValuesFn(Scope $scope, array $options, array $staticValues = []): array
-	{
-		if (!isset($options['valuesFn'])) {
-			return $staticValues;
-		}
-
-		try {
-			$values = $this->reflectionHelper->getNonEmptyStringKeyWithTypeFromConstantArray($options['valuesFn']);
-		} catch (InvalidTypeException|NonConstantTypeException) {
-			throw new RuleErrorException([
-				RuleErrorBuilder::message(sprintf(
-					'The "valuesFn" option passed must be a constant array, but got %s.',
-					$options['valuesFn']->describe(VerbosityLevel::typeOnly()),
-				))
-					->identifier($this->id('invalidValuesFn'))
-					->build(),
-			]);
-		}
-
-		foreach ($values as $key => $type) {
-			if (isset($staticValues[$key])) {
-				throw new RuleErrorException([
-					RuleErrorBuilder::message(sprintf(
-						'The "values" and "valuesFn" options passed both contain the key \'%s\'. Each key can only be present in one of the two.',
-						$key,
-					))
-						->identifier($this->id('duplicateValuesKey'))
-						->build(),
-				]);
-			}
-
-			$types = [];
-			foreach ($type->getCallableParametersAcceptors($scope) as $parametersAcceptor) {
-				$types[] = $parametersAcceptor->getReturnType();
-			}
-			$staticValues[$key] = TypeCombinator::union(...$types);
-		}
-
-		return $staticValues;
-	}
-
-	/**
-	 * @param array<string, Type> $options
-	 *
-	 * @throws RuleErrorException
-	 */
-	private function getAllowNullableWithoutValue(array $options): bool
-	{
-		if (!isset($options['allowNullableWithoutValue'])) {
-			return false;
-		}
-
-		$type = $options['allowNullableWithoutValue'];
-		if (!$type->isBoolean()->yes()) {
-			return false; // covered by another rule
-		}
-
-		if ($type->isTrue()->yes()) {
-			return true;
-		}
-		if ($type->isFalse()->yes()) {
-			return false;
-		}
-
-		throw new RuleErrorException([
-			RuleErrorBuilder::message(sprintf(
-				'The "allowNullableWithoutValue" option passed must be a constant boolean (true or false), but got %s.',
-				$type->describe(VerbosityLevel::typeOnly()),
-			))
-				->identifier($this->id('invalidAllowNullableWithoutValue'))
-				->build(),
-		]);
 	}
 
 }

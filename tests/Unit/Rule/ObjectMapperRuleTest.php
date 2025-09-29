@@ -81,7 +81,7 @@ final class ObjectMapperRuleTest extends RuleTestCase
 • The constructor parameter is nullable, but without a default value. You can allow nullable without value by setting \'allowNullableWithoutValue\' to true in the $options argument.',
 			],
 			[
-				'The "allowNullableWithoutValue" option passed must be a constant boolean (true or false), but got bool.',
+				'The "allowNullableWithoutValue" option in $options of Shredio\ObjectMapper\ObjectMapper::map() must be a constant boolean (true or false), but bool given.',
 				106,
 			],
 			[

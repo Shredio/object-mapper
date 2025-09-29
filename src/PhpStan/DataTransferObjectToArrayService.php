@@ -14,7 +14,9 @@ use PHPStan\Type\VerbosityLevel;
 use Shredio\ObjectMapper\Attribute\ToArraySkipProperties;
 use Shredio\ObjectMapper\ConvertableToArray;
 use Shredio\ObjectMapper\Exception\InvalidExtensionTypeException;
-use Shredio\ObjectMapper\PhpStan\Error\ErrorCollector;
+use Shredio\ObjectMapper\PhpStan\Error\CollectErrorReporter;
+use Shredio\ObjectMapper\PhpStan\Error\ErrorReporter;
+use Shredio\ObjectMapper\PhpStan\Error\ThrowErrorReporter;
 use Shredio\PhpStanHelpers\Exception\CannotCombinePickWithOmitException;
 use Shredio\PhpStanHelpers\Exception\EmptyTypeException;
 use Shredio\PhpStanHelpers\Exception\InvalidTypeException;
@@ -32,8 +34,6 @@ final class DataTransferObjectToArrayService
 	public const string MethodName = 'toArray';
 	public const string OptionsName = 'options';
 
-	private bool $canThrowException = false;
-
 	private ObjectType $baseObjectType;
 
 	public function __construct(
@@ -48,10 +48,9 @@ final class DataTransferObjectToArrayService
 	 */
 	public function collectErrors(Scope $scope, ClassReflection $classReflection, ?Type $optionsType): array
 	{
-		$this->canThrowException = false;
-		$this->parseOptions($scope, $optionsType, $collector = new ErrorCollector('dto'));
-		$this->parseSkipPropertiesFromAttribute($classReflection, $collector);
-		return $collector->errors;
+		$this->parseOptions($scope, $optionsType, $reporter = new CollectErrorReporter('dto'));
+		$this->parseSkipPropertiesFromAttribute($classReflection, $reporter);
+		return $reporter->errors;
 	}
 
 	/**
@@ -63,18 +62,15 @@ final class DataTransferObjectToArrayService
 		?Type $optionsType,
 	): ?Type
 	{
-		$this->canThrowException = true;
-
 		try {
+			$reporter = new ThrowErrorReporter();
 			$types = [];
-			$options = $this->parseOptions($scope, $optionsType);
+			$options = $this->parseOptions($scope, $optionsType, $reporter);
 			foreach ($classReflections as $classReflection) {
-				$types[] = $this->createType($classReflection, $options);
+				$types[] = $this->createType($classReflection, $options, $reporter);
 			}
 		} catch (InvalidExtensionTypeException) { // @phpstan-ignore catch.neverThrown
 			return null;
-		} finally {
-			$this->canThrowException = false;
 		}
 
 		$count = count($types);
@@ -90,9 +86,9 @@ final class DataTransferObjectToArrayService
 	/**
 	 * @param OptionsType $options
 	 */
-	private function createType(ClassReflection $classReflection, array $options): Type
+	private function createType(ClassReflection $classReflection, array $options, ErrorReporter $errorReporter): Type
 	{
-		$skipProperties = $this->parseSkipPropertiesFromAttribute($classReflection);
+		$skipProperties = $this->parseSkipPropertiesFromAttribute($classReflection, $errorReporter);
 		$values = $options['values'];
 		try {
 			$picker = new PropertyPicker($options['pick'], $options['omit']);
@@ -122,7 +118,7 @@ final class DataTransferObjectToArrayService
 			if ($options['deep'] && $readableType->isObject()->yes() && $this->baseObjectType->isSuperTypeOf($readableType)->yes()) {
 				$reflections = $readableType->getObjectClassReflections();
 				if (count($reflections) === 1) {
-					$readableType = $this->createType($reflections[0], $newOptions);
+					$readableType = $this->createType($reflections[0], $newOptions, $errorReporter);
 				}
 			} else {
 				foreach ($options['converters'] as $converter) {
@@ -146,10 +142,7 @@ final class DataTransferObjectToArrayService
 	/**
 	 * @return array<non-empty-string, true>
 	 */
-	private function parseSkipPropertiesFromAttribute(
-		ClassReflection $classReflection,
-		?ErrorCollector $errorCollector = null,
-	): array
+	private function parseSkipPropertiesFromAttribute(ClassReflection $classReflection, ErrorReporter $errorReporter): array
 	{
 		$skip = [];
 		foreach ($classReflection->getAttributes() as $attribute) {
@@ -167,7 +160,7 @@ final class DataTransferObjectToArrayService
 				} catch (EmptyTypeException) {
 					continue; // empty list
 				} catch (InvalidTypeException|NonConstantTypeException) {
-					$errorCollector?->addError(
+					$errorReporter->addError(
 						sprintf('The "properties" argument of the %s attribute in class %s must be a constant list of strings, but %s given.',
 							ToArraySkipProperties::class,
 							$classReflection->getName(),
@@ -175,16 +168,16 @@ final class DataTransferObjectToArrayService
 						),
 						'attribute.properties.invalidType',
 					);
-					$this->errorOccurred();
+
 					continue; // not a constant array
 				}
 			}
 		}
 
-		if ($errorCollector) {
+		if ($errorReporter->isCollector()) {
 			foreach ($skip as $propertyName) {
 				if (!$classReflection->hasInstanceProperty($propertyName)) {
-					$errorCollector->addError(
+					$errorReporter->addError(
 						sprintf('The property "%s" listed in the %s attribute in class %s does not exist.',
 							$propertyName,
 							ToArraySkipProperties::class,
@@ -192,7 +185,6 @@ final class DataTransferObjectToArrayService
 						),
 						'attribute.missingProperty',
 					);
-					$this->errorOccurred();
 				}
 			}
 		}
@@ -208,7 +200,7 @@ final class DataTransferObjectToArrayService
 	/**
 	 * @return OptionsType
 	 */
-	private function parseOptions(Scope $scope, ?Type $type, ?ErrorCollector $errorCollector = null): array
+	private function parseOptions(Scope $scope, ?Type $type, ErrorReporter $errorReporter): array
 	{
 		if ($type === null) {
 			return $this->getDefaultOptions();
@@ -217,7 +209,7 @@ final class DataTransferObjectToArrayService
 		try {
 			$options = $this->reflectionHelper->getNonEmptyStringKeyWithTypeFromConstantArray($type);
 		} catch (NonConstantTypeException|InvalidTypeException) {
-			$errorCollector?->addError(
+			$errorReporter->addError(
 				sprintf('The second argument $%s of %s::%s() must be a constant array, but %s given.',
 					self::OptionsName,
 					self::ClassName,
@@ -227,102 +219,27 @@ final class DataTransferObjectToArrayService
 				'options.invalidType',
 			);
 
-			$this->errorOccurred();
 			return $this->getDefaultOptions(); // not a constant array
 		}
 
-		// values
-		try {
-			if (isset($options['values'])) {
-				$values = $this->reflectionHelper->getNonEmptyStringKeyWithTypeFromConstantArray($options['values']);
-			} else {
-				$values = [];
-			}
-		} catch (NonConstantTypeException|InvalidTypeException) {
-			$errorCollector?->addError(
-				sprintf('The "values" option in $%s of %s::%s() must be a constant array with string keys, but %s given.',
-					self::OptionsName,
-					self::ClassName,
-					self::MethodName,
-					$options['values']->describe(VerbosityLevel::typeOnly()),
-				),
-				'options.values.invalidType',
-			);
+		$optionsParser = new PhpStanOptionsParser(
+			$this->reflectionHelper,
+			$scope,
+			$options,
+			self::ClassName,
+			self::MethodName,
+			self::OptionsName,
+			$errorReporter,
+		);
 
-			$this->errorOccurred();
-			return $this->getDefaultOptions(); // not a constant array
-		}
-
-		// deep
-		try {
-			if (isset($options['deep'])) {
-				$deep = $this->reflectionHelper->getTrueOrFalseFromConstantBoolean($options['deep']);
-			} else {
-				$deep = false;
-			}
-		} catch (NonConstantTypeException|InvalidTypeException) {
-			$errorCollector?->addError(
-				sprintf('The "deep" option in $%s of %s::%s() must be a constant boolean (true or false), but %s given.',
-					self::OptionsName,
-					self::ClassName,
-					self::MethodName,
-					$options['deep']->describe(VerbosityLevel::typeOnly()),
-				),
-				'options.deep.invalidType',
-			);
-
-			$this->errorOccurred();
-			return $this->getDefaultOptions(); // not a constant boolean
-		}
-
-		// omit
-		try {
-			if (isset($options['omit'])) {
-				$omit = $this->reflectionHelper->getNonEmptyStringsFromConstantArrayType($options['omit']);
-			} else {
-				$omit = null;
-			}
-		} catch (InvalidTypeException|NonConstantTypeException) {
-			$errorCollector?->addError(
-				sprintf('The "omit" option in $%s of %s::%s() must be a constant list of strings, but %s given.',
-					self::OptionsName,
-					self::ClassName,
-					self::MethodName,
-					$options['omit']->describe(VerbosityLevel::typeOnly()),
-				),
-				'options.omit.invalidType',
-			);
-			$this->errorOccurred();
-			return $this->getDefaultOptions();
-		} catch (EmptyTypeException) {
-			$omit = [];
-		}
-
-		// pick
-		try {
-			if (isset($options['pick'])) {
-				$pick = $this->reflectionHelper->getNonEmptyStringsFromConstantArrayType($options['pick']);
-			} else {
-				$pick = null;
-			}
-		} catch (InvalidTypeException|NonConstantTypeException) {
-			$errorCollector?->addError(
-				sprintf('The "pick" option in $%s of %s::%s() must be a constant list of strings, but %s given.',
-					self::OptionsName,
-					self::ClassName,
-					self::MethodName,
-					$options['pick']->describe(VerbosityLevel::typeOnly()),
-				),
-				'options.pick.invalidType',
-			);
-			$this->errorOccurred();
-			return $this->getDefaultOptions();
-		} catch (EmptyTypeException) {
-			$pick = [];
-		}
+		$values = $optionsParser->values('values');
+		$deep = $optionsParser->bool('deep', false);
+		$converters = $optionsParser->converters('converters');
+		$omit = $optionsParser->listOfNonEmptyStrings('omit');
+		$pick = $optionsParser->listOfNonEmptyStrings('pick');
 
 		if ($pick !== null && $omit !== null) {
-			$errorCollector?->addError(
+			$errorReporter->addError(
 				sprintf('The "pick" and "omit" options in $%s of %s::%s() cannot be used together.',
 					self::OptionsName,
 					self::ClassName,
@@ -330,172 +247,18 @@ final class DataTransferObjectToArrayService
 				),
 				'options.pickAndOmit',
 			);
-			$this->errorOccurred();
+
 			return $this->getDefaultOptions();
 		}
+
 
 		return [
 			'values' => $values,
 			'deep' => $deep,
 			'omit' => $omit,
 			'pick' => $pick,
-			'converters' => $this->parseConverters($scope,$options['converters'] ?? null, $errorCollector),
+			'converters' => $converters,
 		];
-	}
-
-	/**
-	 * @return list<DataTransferObjectConverter>
-	 */
-	private function parseConverters(Scope $scope, ?Type $type, ?ErrorCollector $errorCollector = null): array
-	{
-		if ($type === null) {
-			return [];
-		}
-
-		try {
-			$constantListValues = $this->reflectionHelper->getValueTypesFromConstantList($type);
-		} catch (InvalidTypeException) {
-			$this->errorOccurred(); // covered by another rule
-			return [];
-		} catch (NonConstantTypeException) {
-			$errorCollector?->addError(
-				sprintf('The "converters" option in $%s of %s::%s() must be a constant list, but %s given.',
-					self::OptionsName,
-					self::ClassName,
-					self::MethodName,
-					$type->describe(VerbosityLevel::typeOnly()) ,
-				),
-				'options.converters.type',
-			);
-			$this->errorOccurred();
-			return [];
-		}
-
-		$return = [];
-		foreach ($constantListValues as $innerType) {
-			if (!$innerType->isList()->yes()) {
-				$this->errorOccurred(); // covered by another rule
-				continue;
-			}
-
-			try {
-				/** @var list<Type> $innerValueTypes */
-				$innerValueTypes = iterator_to_array($this->reflectionHelper->getValueTypesFromConstantList($innerType), false);
-			} catch (InvalidTypeException) {
-				$this->errorOccurred(); // covered by another rule
-				continue;
-			} catch (NonConstantTypeException) {
-				$errorCollector?->addError(
-					sprintf('The "converters" option in $%s of %s::%s() must be a constant list of constant list, but %s given.',
-						self::OptionsName,
-						self::ClassName,
-						self::MethodName,
-						$innerType->describe(VerbosityLevel::typeOnly()),
-					),
-					'options.converters.type',
-				);
-				$this->errorOccurred();
-				continue;
-			}
-
-			if (count($innerValueTypes) < 2) {
-				$this->errorOccurred(); // covered by another rule
-				continue;
-			}
-
-			$classNameType = $innerValueTypes[0];
-			$callbackType = $innerValueTypes[1];
-
-			if (!$classNameType->isClassString()->yes()) {
-				$this->errorOccurred(); // covered by another rule
-				continue;
-			}
-
-			$acceptType = $classNameType->getClassStringObjectType();
-			$acceptTypeClassNames = $acceptType->getObjectClassNames();
-			$count = count($acceptTypeClassNames);
-			if ($count === 0) {
-				$errorCollector?->addError(
-					sprintf('The "converters" option in $%s of %s::%s() contains a class-string that does not specify any class.',
-						self::OptionsName,
-						self::ClassName,
-						self::MethodName,
-					),
-					'options.converters.classStringNoClass',
-				);
-				$this->errorOccurred();
-				continue;
-			}
-			if ($count > 1) {
-				$errorCollector?->addError(
-					sprintf('The "converters" option in $%s of %s::%s() contains a class-string with multiple possible classes (%s), but only one is supported.',
-						self::OptionsName,
-						self::ClassName,
-						self::MethodName,
-						implode(', ', $acceptTypeClassNames),
-					),
-					'options.converters.classStringMultipleClasses',
-				);
-				$this->errorOccurred();
-				continue;
-			}
-
-			if (!$callbackType->isCallable()->yes()) {
-				$this->errorOccurred();
-				continue;
-			}
-
-			$callableParametersAcceptors = $callbackType->getCallableParametersAcceptors($scope);
-			$count = count($callableParametersAcceptors);
-			if ($count === 0) {
-				$this->errorOccurred();
-				continue; // covered by another rule
-			}
-			if ($count !== 1) {
-				$errorCollector?->addError(
-					sprintf('The "converters" option in $%s of %s::%s() contains a callable with %d variants, but only one is supported.',
-						self::OptionsName,
-						self::ClassName,
-						self::MethodName,
-						$count,
-					),
-					'options.converters.multipleVariants',
-				);
-				$this->errorOccurred();
-				continue;
-			}
-			$parametersAcceptor = $callableParametersAcceptors[0];
-			$firstParameter = $parametersAcceptor->getParameters()[0] ?? null;
-			if ($firstParameter !== null && !$firstParameter->getType()->accepts($acceptType, true)->yes()) {
-				$errorCollector?->addError(
-					sprintf(
-						'The "converters" option in $%s of %s::%s() contains a callable where the first parameter is %s, but it must be %s or its supertype.',
-						self::OptionsName,
-						self::ClassName,
-						self::MethodName,
-						$firstParameter->getType()->describe(VerbosityLevel::typeOnly()),
-						$acceptType->describe(VerbosityLevel::typeOnly()),
-					),
-					'options.converters.parameterType',
-				);
-				$this->errorOccurred();
-				continue;
-			}
-
-			$return[] = new DataTransferObjectConverter(
-				acceptType: $acceptType,
-				returnType: $parametersAcceptor->getReturnType(),
-			);
-		}
-
-		return $return;
-	}
-
-	private function errorOccurred(): void
-	{
-		if ($this->canThrowException) {
-			throw new InvalidExtensionTypeException();
-		}
 	}
 
 	/**
