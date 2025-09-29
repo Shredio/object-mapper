@@ -2,6 +2,7 @@
 
 namespace Shredio\ObjectMapper\Helper;
 
+use InvalidArgumentException;
 use Shredio\ObjectMapper\Trait\DataTransferObjectToArrayMethod;
 
 /**
@@ -21,22 +22,28 @@ final readonly class ConverterLookup
 	{
 		$lookup = [];
 		foreach ($converters as [$class, $converter]) {
-			foreach (class_implements($class) as $interface) {
-				$lookup[$interface] = $converter;
+			if (isset($lookup[$class])) {
+				throw new InvalidArgumentException(sprintf('Converter for class %s is already defined.', $class));
 			}
-			foreach (class_parents($class) as $parent) {
-				$lookup[$parent] = $converter;
-			}
+
 			$lookup[$class] = $converter;
 		}
-
 		$this->lookup = $lookup;
 	}
 
-	private function tryToConvert(mixed $value): mixed
+	public function tryToConvert(mixed $value): mixed
 	{
-		if (is_object($value) && isset($this->lookup[$value::class])) {
-			return $this->lookup[$value::class]($value); // @phpstan-ignore callable.nonCallable
+		if ($this->lookup === []) {
+			return $value;
+		}
+		if (!is_object($value)) {
+			return $value;
+		}
+
+		foreach ($this->lookup as $class => $converter) {
+			if ($value instanceof $class) {
+				return $converter($value); // @phpstan-ignore callable.nonCallable
+			}
 		}
 		return $value;
 	}
