@@ -3,6 +3,7 @@
 namespace Tests\Unit\Rule;
 
 use DateTimeImmutable;
+use Shredio\ObjectMapper\Attribute\ToArraySkipProperties;
 use Shredio\ObjectMapper\MutableDataTransferObject;
 
 final class DataTransferObjectRuleTestCases
@@ -92,6 +93,19 @@ final class DataTransferObjectRuleTestCases
 		]);
 	}
 
+	public function invalidSkipPropertyName(): void
+	{
+		$dto = new ToArraySkipPropertiesDto();
+		$dto->toArray();
+	}
+
+	public function callToArrayOnOtherClass(): void
+	{
+		$object = new \stdClass();
+		$object->toArray([
+			'pick' => true,
+		]);
+	}
 
 }
 
@@ -107,3 +121,17 @@ class AnotherTestDto extends MutableDataTransferObject
 	public string $value = 'another';
 }
 
+#[ToArraySkipProperties(['missingProperty'])]
+class ToArraySkipPropertiesDto extends MutableDataTransferObject
+{
+	public int $id = 1;
+	public string $name = 'Test';
+
+	/**
+	 * @return array{id: int}
+	 */
+	public function toArray(array $options = []): array
+	{
+		return parent::toArray($options);
+	}
+}

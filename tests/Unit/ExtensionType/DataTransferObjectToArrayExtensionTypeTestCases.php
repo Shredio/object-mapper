@@ -4,6 +4,7 @@ namespace Tests\Unit\ExtensionType;
 
 use DateTimeImmutable;
 use DateTimeInterface;
+use Shredio\ObjectMapper\Attribute\ToArraySkipProperties;
 use Shredio\ObjectMapper\MutableDataTransferObject;
 use Tests\AccessObject;
 use function PHPStan\Testing\assertType;
@@ -218,6 +219,11 @@ final readonly class DataTransferObjectToArrayExtensionTypeTestCases
 		assertType('array{override: int}', $class->toArray());
 	}
 
+	public function testToArraySkipProperties(): void
+	{
+		assertType('array{id: int}', (new DtoWithToArraySkipProperties())->toArray());
+	}
+
 }
 
 class SinglePropertyObject extends MutableDataTransferObject {
@@ -273,4 +279,12 @@ class TestDtoWithDateArray extends MutableDataTransferObject {
 }
 
 class EmptyDto extends MutableDataTransferObject {
+}
+
+#[ToArraySkipProperties(['name'])]
+class DtoWithToArraySkipProperties extends MutableDataTransferObject{
+
+	public int $id = 1;
+	public string $name = 'Test';
+
 }

@@ -11,6 +11,7 @@ use PHPStan\Type\ObjectType;
 use PHPStan\Type\Type;
 use PHPStan\Type\TypeCombinator;
 use PHPStan\Type\VerbosityLevel;
+use Shredio\ObjectMapper\Attribute\ToArraySkipProperties;
 use Shredio\ObjectMapper\ConvertableToArray;
 use Shredio\ObjectMapper\Exception\InvalidExtensionTypeException;
 use Shredio\ObjectMapper\Helper\PropertyPicker;
@@ -44,10 +45,11 @@ final class DataTransferObjectToArrayService
 	/**
 	 * @return list<IdentifierRuleError>
 	 */
-	public function collectErrors(Scope $scope, ?Type $optionsType): array
+	public function collectErrors(Scope $scope, ClassReflection $classReflection, ?Type $optionsType): array
 	{
 		$this->canThrowException = false;
 		$this->parseOptions($scope, $optionsType, $collector = new ErrorCollector('dto'));
+		$this->parseSkipPropertiesFromAttribute($classReflection, $collector);
 		return $collector->errors;
 	}
 
@@ -89,8 +91,8 @@ final class DataTransferObjectToArrayService
 	 */
 	private function createType(ClassReflection $classReflection, array $options): Type
 	{
+		$skipProperties = $this->parseSkipPropertiesFromAttribute($classReflection);
 		$values = $options['values'];
-		$options['values'] = [];
 		$picker = new PropertyPicker($options['pick'], $options['omit']);
 		$newOptions = [
 			'values' => [],
@@ -104,6 +106,9 @@ final class DataTransferObjectToArrayService
 		$selectedProperties = $this->reflectionHelper->getReadablePropertiesFromReflection($classReflection);
 		foreach ($selectedProperties as $propertyName => $reflectionProperty) {
 			if (isset($values[$propertyName])) {
+				continue;
+			}
+			if (isset($skipProperties[$propertyName])) {
 				continue;
 			}
 			if (!$picker->shouldPick($propertyName)) {
@@ -133,6 +138,68 @@ final class DataTransferObjectToArrayService
 		}
 
 		return $builder->getArray();
+	}
+
+	/**
+	 * @return array<non-empty-string, true>
+	 */
+	private function parseSkipPropertiesFromAttribute(
+		ClassReflection $classReflection,
+		?ErrorCollector $errorCollector = null,
+	): array
+	{
+		$skip = [];
+		foreach ($classReflection->getAttributes() as $attribute) {
+			if ($attribute->getName() === ToArraySkipProperties::class) {
+				$arguments = $attribute->getArgumentTypes();
+				if (!isset($arguments['properties'])) {
+					continue; // covered by another rule
+				}
+
+				try {
+					$skip = array_merge(
+						$skip,
+						$this->reflectionHelper->getNonEmptyStringsFromConstantArrayType($arguments['properties']),
+					);
+				} catch (EmptyTypeException) {
+					continue; // empty list
+				} catch (InvalidTypeException|NonConstantTypeException) {
+					$errorCollector?->addError(
+						sprintf('The "properties" argument of the %s attribute in class %s must be a constant list of strings, but %s given.',
+							ToArraySkipProperties::class,
+							$classReflection->getName(),
+							$arguments['properties']->describe(VerbosityLevel::typeOnly()),
+						),
+						'attribute.properties.invalidType',
+					);
+					$this->errorOccurred();
+					continue; // not a constant array
+				}
+			}
+		}
+
+		if ($errorCollector) {
+			foreach ($skip as $propertyName) {
+				if (!$classReflection->hasInstanceProperty($propertyName)) {
+					$errorCollector->addError(
+						sprintf('The property "%s" listed in the %s attribute in class %s does not exist.',
+							$propertyName,
+							ToArraySkipProperties::class,
+							$classReflection->getName(),
+						),
+						'attribute.missingProperty',
+					);
+					$this->errorOccurred();
+				}
+			}
+		}
+
+		$return = [];
+		foreach ($skip as $propertyName) {
+			$return[$propertyName] = true;
+		}
+
+		return $return;
 	}
 
 	/**

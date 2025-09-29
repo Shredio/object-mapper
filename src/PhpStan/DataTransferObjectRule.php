@@ -4,7 +4,11 @@ namespace Shredio\ObjectMapper\PhpStan;
 
 use PhpParser\Node;
 use PHPStan\Analyser\Scope;
+use PHPStan\Reflection\ClassReflection;
+use PHPStan\Reflection\ReflectionProvider;
 use PHPStan\Rules\Rule;
+use Shredio\ObjectMapper\ConvertableToArray;
+use Shredio\PhpStanHelpers\PhpStanNodeHelper;
 use Shredio\PhpStanHelpers\PhpStanReflectionHelper;
 
 /**
@@ -15,11 +19,16 @@ final readonly class DataTransferObjectRule implements Rule
 
 	private DataTransferObjectToArrayService $service;
 
+	private ClassReflection $baseClass;
+
 	public function __construct(
 		PhpStanReflectionHelper $reflectionHelper,
+		private PhpStanNodeHelper $nodeHelper,
+		ReflectionProvider $reflectionProvider,
 	)
 	{
 		$this->service = new DataTransferObjectToArrayService($reflectionHelper);
+		$this->baseClass = $reflectionProvider->getClass(ConvertableToArray::class);
 	}
 
 	public function getNodeType(): string
@@ -32,7 +41,16 @@ final readonly class DataTransferObjectRule implements Rule
 		$optionsArg = $node->getArgs()[0] ?? null;
 		$optionsType = $optionsArg === null ? null : $scope->getType($optionsArg->value);
 
-		return $this->service->collectErrors($scope, $optionsType);
+		$classReflections = $this->nodeHelper->getClassReflectionsFromMethodCall($node, $scope);
+		foreach ($classReflections as $classReflection) {
+			if (!$classReflection->isSubclassOfClass($this->baseClass)) {
+				continue;
+			}
+
+			return $this->service->collectErrors($scope, $classReflection, $optionsType);
+		}
+
+		return [];
 	}
 
 }
