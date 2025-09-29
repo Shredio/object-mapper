@@ -104,6 +104,12 @@ final class ObjectMapperRuleTest extends RuleTestCase
 				138,
 				'Check the value you provided in the $options argument.',
 			],
+			[
+				'Incompatible types for property Tests\Unit\Rule\IntProperty::$value: string is not assignable to int.',
+				147,
+				'• You can provide a value for it in the \'values\' or \'valuesFn\' key of $options argument.
+• The source value is from Tests\Unit\Rule\DateTimeProperty::$value.',
+			],
 		]);
 	}
 

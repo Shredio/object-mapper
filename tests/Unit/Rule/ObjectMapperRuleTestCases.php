@@ -142,6 +142,15 @@ final class ObjectMapperRuleTestCases
 		]);
 	}
 
+	public function invalidConverter(): void
+	{
+		$this->mapper->map(new DateTimeProperty(), IntProperty::class, [
+			'converters' => [
+				[DateTimeInterface::class, fn (DateTimeInterface $date) => $date->format('Y-m-d')]
+			],
+		]);
+	}
+
 	// valid cases
 
 	public function validUnionObjectTypesTarget(Article|Post $target): void
@@ -214,6 +223,15 @@ final class ObjectMapperRuleTestCases
 		]);
 	}
 
+	public function validConverter(): void
+	{
+		$this->mapper->map(new DateTimeProperty(), StringProperty::class, [
+			'converters' => [
+				[DateTimeInterface::class, fn (DateTimeInterface $date) => $date->format('Y-m-d')]
+			],
+		]);
+	}
+
 }
 
 class EmptyClass {}
@@ -227,6 +245,18 @@ class SingleConstructorParameterClass {
 }
 
 class SinglePropertyClass {
+	public int $value = 42;
+}
+
+class StringProperty {
+	public string $value = 'default';
+}
+
+class DateTimeProperty {
+	public DateTimeInterface $value;
+}
+
+class IntProperty {
 	public int $value = 42;
 }
 

@@ -2,6 +2,7 @@
 
 namespace Tests;
 
+use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
 use Shredio\ObjectMapper\DefaultObjectMapper;
 use Shredio\ObjectMapper\Exception\LogicException;
@@ -443,6 +444,138 @@ final class DefaultObjectMapperTest extends TestCase
 		$this->assertNull($result->description);
 	}
 
+	public function testMapWithConvertersBasic(): void
+	{
+		$source = new SourceWithDate();
+		$source->name = 'John';
+		$source->date = new DateTimeImmutable('2023-01-01T12:00:00+00:00');
+
+		$result = $this->mapper->map($source, TargetWithDate::class, [
+			'converters' => [
+				[DateTimeImmutable::class, fn(DateTimeImmutable $date): string => $date->format('Y-m-d')]
+			]
+		]);
+
+		$this->assertInstanceOf(TargetWithDate::class, $result);
+		$this->assertSame('John', $result->name);
+		$this->assertSame('2023-01-01', $result->date);
+	}
+
+	public function testMapWithConvertersForConstructorParameters(): void
+	{
+		$source = new SourceWithDate();
+		$source->name = 'Alice';
+		$source->date = new DateTimeImmutable('2023-06-15T10:30:00+00:00');
+
+		$result = $this->mapper->map($source, ConstructorTargetWithDate::class, [
+			'converters' => [
+				[DateTimeImmutable::class, fn(DateTimeImmutable $date): string => $date->format('d/m/Y')]
+			]
+		]);
+
+		$this->assertInstanceOf(ConstructorTargetWithDate::class, $result);
+		$this->assertSame('Alice', $result->name);
+		$this->assertSame('15/06/2023', $result->date);
+	}
+
+	public function testMapWithConvertersAndValues(): void
+	{
+		$source = new SourceWithDate();
+		$source->name = 'Bob';
+		$source->date = new DateTimeImmutable('2023-03-20T15:45:00+00:00');
+
+		$result = $this->mapper->map($source, TargetWithDate::class, [
+			'converters' => [
+				[DateTimeImmutable::class, fn(DateTimeImmutable $date): string => $date->format('Y-m-d')]
+			],
+			'values' => [
+				'name' => 'Override'
+			]
+		]);
+
+		$this->assertSame('Override', $result->name);
+		$this->assertSame('2023-03-20', $result->date);
+	}
+
+	public function testMapWithConvertersAndValuesFn(): void
+	{
+		$source = new SourceWithDate();
+		$source->name = 'Charlie';
+		$source->date = new DateTimeImmutable('2023-05-10T08:15:00+00:00');
+
+		$result = $this->mapper->map($source, TargetWithDate::class, [
+			'converters' => [
+				[DateTimeImmutable::class, fn(DateTimeImmutable $date): string => $date->format('Y-m-d')]
+			],
+			'valuesFn' => [
+				'name' => fn(object $source): string => strtoupper($source->name)
+			]
+		]);
+
+		$this->assertSame('CHARLIE', $result->name);
+		$this->assertSame('2023-05-10', $result->date);
+	}
+
+	public function testMapWithMultipleConverters(): void
+	{
+		$source = new ComplexSourceWithObjects();
+		$source->name = 'David';
+		$source->date = new DateTimeImmutable('2023-07-25T14:20:00+00:00');
+		$source->other = new SimpleSource();
+		$source->other->name = 'Other';
+		$source->other->age = 25;
+
+		$result = $this->mapper->map($source, ComplexTargetWithObjects::class, [
+			'converters' => [
+				[DateTimeImmutable::class, fn(DateTimeImmutable $date): string => $date->format('Y-m-d')],
+				[SimpleSource::class, fn(SimpleSource $source): string => $source->name . ':' . $source->age]
+			]
+		]);
+
+		$this->assertSame('David', $result->name);
+		$this->assertSame('2023-07-25', $result->date);
+		$this->assertSame('Other:25', $result->other);
+	}
+
+	public function testMapWithEmptyConverters(): void
+	{
+		$source = new SourceWithDate();
+		$source->name = 'Eve';
+		$source->date = new DateTimeImmutable('2023-09-01T11:00:00+00:00');
+
+		$result = $this->mapper->map($source, TargetWithMixed::class, [
+			'converters' => []
+		]);
+
+		$this->assertSame('Eve', $result->name);
+		$this->assertInstanceOf(DateTimeImmutable::class, $result->date);
+		$this->assertSame('2023-09-01T11:00:00+00:00', $result->date->format('c'));
+	}
+
+	public function testMapManyWithConverters(): void
+	{
+		$source1 = new SourceWithDate();
+		$source1->name = 'First';
+		$source1->date = new DateTimeImmutable('2023-01-01T00:00:00+00:00');
+
+		$source2 = new SourceWithDate();
+		$source2->name = 'Second';
+		$source2->date = new DateTimeImmutable('2023-02-01T00:00:00+00:00');
+
+		$sources = [$source1, $source2];
+		$results = $this->mapper->mapMany($sources, TargetWithDate::class, [
+			'converters' => [
+				[DateTimeImmutable::class, fn(DateTimeImmutable $date): string => $date->format('M Y')]
+			]
+		]);
+
+		$this->assertCount(2, $results);
+		$this->assertSame('First', $results[0]->name);
+		$this->assertSame('Jan 2023', $results[0]->date);
+		$this->assertSame('Second', $results[1]->name);
+		$this->assertSame('Feb 2023', $results[1]->date);
+	}
+
 }
 
 final class SimpleSource
@@ -569,4 +702,47 @@ final class ComplexTarget
 	public string $name;
 	public int $value;
 	public string $description;
+}
+
+final class SourceWithDate
+{
+	public string $name;
+	public DateTimeImmutable $date;
+}
+
+final class TargetWithDate
+{
+	public string $name;
+	public string $date;
+}
+
+final class ConstructorTargetWithDate
+{
+	public readonly string $date;
+	public string $name;
+
+	public function __construct(string $date)
+	{
+		$this->date = $date;
+	}
+}
+
+final class TargetWithMixed
+{
+	public string $name;
+	public mixed $date;
+}
+
+final class ComplexSourceWithObjects
+{
+	public string $name;
+	public DateTimeImmutable $date;
+	public SimpleSource $other;
+}
+
+final class ComplexTargetWithObjects
+{
+	public string $name;
+	public string $date;
+	public string $other;
 }

@@ -25,7 +25,7 @@ use Shredio\PhpStanHelpers\Helper\PropertyPicker;
 use Shredio\PhpStanHelpers\PhpStanReflectionHelper;
 
 /**
- * @phpstan-type OptionsType array{ values: array<non-empty-string, Type>, deep: bool, converters: list<DataTransferObjectConverter>, pick: list<non-empty-string>|null, omit: list<non-empty-string>|null }
+ * @phpstan-type OptionsType array{ values: array<non-empty-string, Type>, deep: bool, converters: DataTransferObjectConverterCollection, pick: list<non-empty-string>|null, omit: list<non-empty-string>|null }
  */
 final class DataTransferObjectToArrayService
 {
@@ -121,12 +121,7 @@ final class DataTransferObjectToArrayService
 					$readableType = $this->createType($reflections[0], $newOptions, $errorReporter);
 				}
 			} else {
-				foreach ($options['converters'] as $converter) {
-					if ($converter->acceptType->accepts($readableType, true)->yes()) {
-						$readableType = $converter->returnType;
-						break;
-					}
-				}
+				$readableType = $options['converters']->getRealType($readableType);
 			}
 
 			$builder->setOffsetValueType(new ConstantStringType($propertyName), $readableType);
@@ -266,7 +261,13 @@ final class DataTransferObjectToArrayService
 	 */
 	private function getDefaultOptions(): array
 	{
-		return ['values' => [], 'deep' => false, 'converters' => [], 'omit' => null, 'pick' => null];
+		return [
+			'values' => [],
+			'deep' => false,
+			'converters' => new DataTransferObjectConverterCollection(),
+			'omit' => null,
+			'pick' => null,
+		];
 	}
 
 }

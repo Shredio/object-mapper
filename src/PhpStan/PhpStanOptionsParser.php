@@ -175,20 +175,19 @@ final readonly class PhpStanOptionsParser
 
 	/**
 	 * @param non-empty-string $optionName
-	 * @return list<DataTransferObjectConverter>
 	 */
-	public function converters(string $optionName): array
+	public function converters(string $optionName): DataTransferObjectConverterCollection
 	{
 		$type = $this->options[$optionName] ?? null;
 		if ($type === null) {
-			return [];
+			return new DataTransferObjectConverterCollection();
 		}
 
 		try {
 			$constantListValues = $this->reflectionHelper->getValueTypesFromConstantList($type);
 		} catch (InvalidTypeException) {
 			$this->errorReporter->error();
-			return []; // covered by another rule
+			return new DataTransferObjectConverterCollection(); // covered by another rule
 		} catch (NonConstantTypeException) {
 			$this->errorReporter->addError(
 				sprintf('The "%s" option in $%s of %s::%s() must be a constant list, but %s given.',
@@ -200,7 +199,7 @@ final readonly class PhpStanOptionsParser
 				),
 				sprintf('options.%s.type', $optionName),
 			);
-			return [];
+			return new DataTransferObjectConverterCollection();
 		}
 
 		$return = [];
@@ -320,7 +319,7 @@ final readonly class PhpStanOptionsParser
 			);
 		}
 
-		return $return;
+		return new DataTransferObjectConverterCollection($return);
 	}
 
 }

@@ -11,7 +11,6 @@ use PHPStan\Type\ObjectType;
 use PHPStan\Type\Type;
 use PHPStan\Type\TypeCombinator;
 use PHPStan\Type\VerbosityLevel;
-use Shredio\ObjectMapper\Exception\RuleErrorException;
 use Shredio\ObjectMapper\ObjectMapper;
 use Shredio\ObjectMapper\PhpStan\Error\CollectErrorReporter;
 use Shredio\PhpStanHelpers\Exception\InvalidTypeException;
@@ -19,6 +18,7 @@ use Shredio\PhpStanHelpers\Exception\NonConstantTypeException;
 use Shredio\PhpStanHelpers\PhpStanReflectionHelper;
 
 /**
+ * @phpstan-type OptionsType array{ values: array<non-empty-string, Type>, allowNullableWithoutValue: bool, converters: DataTransferObjectConverterCollection }
  * @implements Rule<Node\Expr\MethodCall>
  */
 final readonly class ObjectMapperRule implements Rule
@@ -139,6 +139,7 @@ final readonly class ObjectMapperRule implements Rule
 
 		$staticValues = $options['values'];
 		$allowNullableWithoutValue = $options['allowNullableWithoutValue'];
+		$converters = $options['converters'];
 
 		$errors = [];
 		foreach ($writableProperties as $propertyToWrite) {
@@ -195,6 +196,7 @@ final readonly class ObjectMapperRule implements Rule
 			}
 
 			$writableType = $propertyToWrite instanceof ExtendedParameterReflection ? $propertyToWrite->getType() : $propertyToWrite->getWritableType();
+			$propertyTypeToRead = $converters->getRealType($propertyTypeToRead);
 
 			if (!$writableType->accepts($propertyTypeToRead, true)->yes()) {
 				$builder = RuleErrorBuilder::message(sprintf(
@@ -231,7 +233,7 @@ final readonly class ObjectMapperRule implements Rule
 	}
 
 	/**
-	 * @return array{ values: array<non-empty-string, Type>, allowNullableWithoutValue: bool }
+	 * @return OptionsType
 	 */
 	private function getOptions(Scope $scope, ?Type $type, string $className, CollectErrorReporter $errorReporter): array
 	{
@@ -268,19 +270,25 @@ final readonly class ObjectMapperRule implements Rule
 		$values = $optionsParser->values('values');
 		$values = $optionsParser->valuesFn('valuesFn', 'values', $values);
 		$allowNullableWithoutValue = $optionsParser->bool('allowNullableWithoutValue', false);
+		$converters = $optionsParser->converters('converters');
 
 		return [
 			'values' => $values,
 			'allowNullableWithoutValue' => $allowNullableWithoutValue,
+			'converters' => $converters,
 		];
 	}
 
 	/**
-	 * @return array{ values: array<non-empty-string, Type>, allowNullableWithoutValue: bool }
+	 * @return OptionsType
 	 */
 	private function defaultOptions(): array
 	{
-		return ['values' => [], 'allowNullableWithoutValue' => false];
+		return [
+			'values' => [],
+			'allowNullableWithoutValue' => false,
+			'converters' => new DataTransferObjectConverterCollection(),
+		];
 	}
 
 	private function id(string $name): string

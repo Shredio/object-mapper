@@ -3,7 +3,7 @@
 namespace Shredio\ObjectMapper\Trait;
 
 use Shredio\ObjectMapper\ConvertableToArray;
-use Shredio\ObjectMapper\Helper\ConverterLookup;
+use Shredio\ObjectMapper\Helper\Helpers;
 
 /**
  * @phpstan-type ConverterCallback callable(object $object): mixed
@@ -22,8 +22,8 @@ trait DataTransferObjectToArrayMethod
 		/** @var array<non-empty-string, mixed> $values */
 		$values = get_object_vars($this);
 		// 1. Omit and pick properties
-		$values = $this->omitProperties($values, $options['omit'] ?? null);
-		$values = $this->pickProperties($values, $options['pick'] ?? null);
+		$values = Helpers::omitProperties($values, $options['omit'] ?? null);
+		$values = Helpers::pickProperties($values, $options['pick'] ?? null);
 
 		// 2. Remove static values from conversion
 		//    (they will be added back later, after conversion)
@@ -32,23 +32,15 @@ trait DataTransferObjectToArrayMethod
 			unset($values[$name]);
 		}
 
-		$converters = $options['converters'] ?? [];
-		if ($converters instanceof ConverterLookup) { // @phpstan-ignore instanceof.alwaysFalse (cache hack)
-			$converterLookup = $converters;
-		} else {
-			$converterLookup = new ConverterLookup($converters);
-		}
-
 		// 3. Convert values
-		$values = $converterLookup->convertArray($values);
+		$values = Helpers::converters($values, $options, 'converters');
+		/** @var OptionsType $options */ // Because of the phpstan type-hinting issue
 
 		// 4. Deep conversion
 		if (($options['deep'] ?? false) === true) {
-			/** @var list<ConverterType> $cachedConverterLookup */
-			$cachedConverterLookup = $converterLookup; // @phpstan-ignore varTag.nativeType (cache hack)
 			$newOptions = [
 				'deep' => $options['deep'],
-				'converters' => $cachedConverterLookup,
+				'converters' => $options['converters'] ?? [],
 			];
 			foreach ($values as $name => $value) {
 				if ($value instanceof ConvertableToArray) {
@@ -77,59 +69,6 @@ trait DataTransferObjectToArrayMethod
 	public function toArrayNoStrict(array $options = []): array
 	{
 		return $this->toArray($options);
-	}
-
-	/**
-	 * @param list<ConverterType> $converters
-	 * @return array<class-string, callable(object $object): mixed>
-	 */
-	private function createLookupConverters(array $converters): array
-	{
-		$lookup = [];
-		foreach ($converters as [$class, $converter]) {
-			foreach (class_implements($class) as $interface) {
-				$lookup[$interface] = $converter;
-			}
-			foreach (class_parents($class) as $parent) {
-				$lookup[$parent] = $converter;
-			}
-			$lookup[$class] = $converter;
-		}
-		return $lookup;
-	}
-
-	/**
-	 * @param array<non-empty-string, mixed> $values
-	 * @param list<non-empty-string>|null $omit
-	 * @return array<non-empty-string, mixed>
-	 */
-	private function omitProperties(array $values, ?array $omit): array
-	{
-		if ($omit === null) {
-			return $values;
-		}
-
-		foreach ($omit as $name) {
-			if (array_key_exists($name, $values)) {
-				unset($values[$name]);
-			}
-		}
-
-		return $values;
-	}
-
-	/**
-	 * @param array<non-empty-string, mixed> $values
-	 * @param list<non-empty-string>|null $pick
-	 * @return array<non-empty-string, mixed>
-	 */
-	private function pickProperties(array $values, ?array $pick): array
-	{
-		if ($pick === null) {
-			return $values;
-		}
-
-		return array_intersect_key($values, array_flip($pick));
 	}
 
 }

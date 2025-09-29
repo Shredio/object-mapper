@@ -5,12 +5,13 @@ namespace Shredio\ObjectMapper;
 use ReflectionClass;
 use ReflectionProperty;
 use Shredio\ObjectMapper\Exception\LogicException;
+use Shredio\ObjectMapper\Helper\Helpers;
 
 final readonly class DefaultObjectMapper implements ObjectMapper
 {
 
 	/**
-	 * @param array{ values?: array<non-empty-string, mixed>, valuesFn?: array<non-empty-string, callable(object $source): mixed>, allowNullableWithoutValue?: bool } $options
+	 * @param array{ values?: array<non-empty-string, mixed>, valuesFn?: array<non-empty-string, callable(object $source): mixed>, allowNullableWithoutValue?: bool, converters?: list<array{class-string, callable(object): mixed}> } $options
 	 */
 	public function map(object $source, string|object $target, array $options = []): object
 	{
@@ -26,6 +27,8 @@ final readonly class DefaultObjectMapper implements ObjectMapper
 		}
 
 		$values = array_merge($values, $options['values'] ?? []);
+		$values = Helpers::converters($values, $options, 'converters');
+		/** @var array{ values?: array<non-empty-string, mixed>, valuesFn?: array<non-empty-string, callable(object $source): mixed>, allowNullableWithoutValue?: bool, converters?: list<array{class-string, callable(object): mixed}> } $options */
 
 		$reflectionClass = new ReflectionClass($target);
 		if (is_string($target)) {
@@ -66,7 +69,7 @@ final readonly class DefaultObjectMapper implements ObjectMapper
 	 * @param class-string<TSource> $sourceClassName
 	 * @param ReflectionClass<TTarget> $reflectionClass
 	 * @param array<non-empty-string, mixed> $values
-	 * @param array{ values?: array<non-empty-string, mixed>, valuesFn?: array<non-empty-string, callable(TSource $object): mixed>, allowNullableWithoutValue?: bool } $options
+	 * @param array{ values?: array<non-empty-string, mixed>, valuesFn?: array<non-empty-string, callable(TSource $object): mixed>, allowNullableWithoutValue?: bool, converters?: list<array{class-string, callable(object): mixed}> } $options
 	 * @return TTarget
 	 */
 	private function createInstance(string $sourceClassName, ReflectionClass $reflectionClass, array &$values, array $options = []): object
