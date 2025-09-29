@@ -114,7 +114,7 @@ final class ObjectMapperRuleTest extends RuleTestCase
 				'Incompatible types for property Tests\Unit\Rule\StringProperty::$value: stdClass|string|null is not assignable to string.',
 				156,
 				'• You can provide a value for it in the \'values\' or \'valuesFn\' key of $options argument.
-• The source value is from AnonymousClass618731443848bb000ab149855a6fec1c::$value.',
+• The source value is from Tests\Unit\Rule\ComplexDateTimeProperty::$value.',
 			],
 		]);
 	}

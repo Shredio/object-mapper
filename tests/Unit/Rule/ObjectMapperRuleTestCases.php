@@ -153,9 +153,7 @@ final class ObjectMapperRuleTestCases
 
 	public function invalidUnionTypesFromConverter(): void
 	{
-		$this->mapper->map(new class {
-			public DateTimeInterface|stdClass|null $value;
-		}, StringProperty::class, [
+		$this->mapper->map(new ComplexDateTimeProperty(), StringProperty::class, [
 			'converters' => [
 				[DateTimeInterface::class, fn (DateTimeInterface $date) => $date->format('Y-m-d')]
 			],
@@ -278,6 +276,10 @@ class StringOrNullProperty {
 
 class DateTimeProperty {
 	public DateTimeInterface $value;
+}
+
+class ComplexDateTimeProperty {
+	public DateTimeInterface|stdClass|null $value;
 }
 
 class DateTimeOrNullProperty {
