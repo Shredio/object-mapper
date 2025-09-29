@@ -6,7 +6,7 @@ use Shredio\ObjectMapper\ConvertableToArray;
 use Shredio\ObjectMapper\Helper\Helpers;
 
 /**
- * @phpstan-type ConverterCallback callable(object $object): mixed
+ * @phpstan-type ConverterCallback callable
  * @phpstan-type ConverterType array{ class-string, ConverterCallback }
  * @phpstan-type OptionsType array{ values?: array<non-empty-string, mixed>, omit?: list<non-empty-string>, pick?: list<non-empty-string>, deep?: bool, converters?: list<ConverterType> }
  */

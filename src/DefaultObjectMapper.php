@@ -69,7 +69,7 @@ final readonly class DefaultObjectMapper implements ObjectMapper
 	 * @param class-string<TSource> $sourceClassName
 	 * @param ReflectionClass<TTarget> $reflectionClass
 	 * @param array<non-empty-string, mixed> $values
-	 * @param array{ values?: array<non-empty-string, mixed>, valuesFn?: array<non-empty-string, callable(TSource $object): mixed>, allowNullableWithoutValue?: bool, converters?: list<array{class-string, callable(object): mixed}> } $options
+	 * @param array{ values?: array<non-empty-string, mixed>, valuesFn?: array<non-empty-string, callable(TSource $object): mixed>, allowNullableWithoutValue?: bool, converters?: list<array{class-string, callable}> } $options
 	 * @return TTarget
 	 */
 	private function createInstance(string $sourceClassName, ReflectionClass $reflectionClass, array &$values, array $options = []): object
