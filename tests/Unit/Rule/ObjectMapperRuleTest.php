@@ -69,6 +69,11 @@ final class ObjectMapperRuleTest extends RuleTestCase
 • The source value is from Tests\Unit\Rule\UnionTypeInvalidSource::$value.',
 			],
 			[
+				'Incompatible types for property Tests\Unit\Rule\SinglePropertyClass::$value: string is not assignable to int.',
+				90,
+				'Check the value you provided in the \'values.value\' of $options argument.',
+			],
+			[
 				'Missing value for constructor parameter Tests\Unit\Rule\StrictNullableTarget::$description.',
 				99,
 				'• Check if Tests\Unit\Rule\DefaultValueTarget has a public property or getter for it.

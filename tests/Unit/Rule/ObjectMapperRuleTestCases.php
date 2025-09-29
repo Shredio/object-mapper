@@ -87,7 +87,7 @@ final class ObjectMapperRuleTestCases
 
 	public function wrongValueTypeForProperty(): void
 	{
-		$this->mapper->$this->map(new SinglePropertyClass(), SinglePropertyClass::class, [
+		$this->mapper->map(new SinglePropertyClass(), SinglePropertyClass::class, [
 			'values' => [
 				'value' => 'string-instead-of-int',
 			],
