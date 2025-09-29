@@ -151,6 +151,17 @@ final class ObjectMapperRuleTestCases
 		]);
 	}
 
+	public function invalidUnionTypesFromConverter(): void
+	{
+		$this->mapper->map(new class {
+			public DateTimeInterface|stdClass|null $value;
+		}, StringProperty::class, [
+			'converters' => [
+				[DateTimeInterface::class, fn (DateTimeInterface $date) => $date->format('Y-m-d')]
+			],
+		]);
+	}
+
 	// valid cases
 
 	public function validUnionObjectTypesTarget(Article|Post $target): void
@@ -232,6 +243,15 @@ final class ObjectMapperRuleTestCases
 		]);
 	}
 
+	public function validNullableConverter(): void
+	{
+		$this->mapper->map(new DateTimeOrNullProperty(), StringOrNullProperty::class, [
+			'converters' => [
+				[DateTimeInterface::class, fn (DateTimeInterface $date) => $date->format('Y-m-d')]
+			],
+		]);
+	}
+
 }
 
 class EmptyClass {}
@@ -252,8 +272,16 @@ class StringProperty {
 	public string $value = 'default';
 }
 
+class StringOrNullProperty {
+	public ?string $value = 'default';
+}
+
 class DateTimeProperty {
 	public DateTimeInterface $value;
+}
+
+class DateTimeOrNullProperty {
+	public ?DateTimeInterface $value;
 }
 
 class IntProperty {
