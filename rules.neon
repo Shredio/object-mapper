@@ -2,3 +2,6 @@ services:
 	-
 		class: Shredio\ObjectMapper\PhpStan\ObjectMapperRule
 		tags: [phpstan.rules.rule]
+	-
+		class: Shredio\ObjectMapper\PhpStan\DataTransferObjectCloneWithRule
+		tags: [phpstan.rules.rule]
