@@ -2,10 +2,10 @@
 
 namespace Shredio\ObjectMapper;
 
-use Shredio\ObjectMapper\Trait\DataTransferObjectMethods;
+use Shredio\ObjectMapper\Trait\DataTransferObjectToArrayMethod;
 
 /**
- * @phpstan-import-type OptionsType from DataTransferObjectMethods
+ * @phpstan-import-type OptionsType from DataTransferObjectToArrayMethod
  * @internal
  */
 interface ConvertableToArray

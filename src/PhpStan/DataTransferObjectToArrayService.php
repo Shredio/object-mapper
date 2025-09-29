@@ -118,7 +118,7 @@ final class DataTransferObjectToArrayService
 				}
 			} else {
 				foreach ($options['converters'] as $converter) {
-					if ($converter->acceptType->isSuperTypeOf($readableType)->yes()) {
+					if ($converter->acceptType->accepts($readableType, true)->yes()) {
 						$readableType = $converter->returnType;
 						break;
 					}
@@ -396,7 +396,7 @@ final class DataTransferObjectToArrayService
 			}
 			$parametersAcceptor = $callableParametersAcceptors[0];
 			$firstParameter = $parametersAcceptor->getParameters()[0] ?? null;
-			if ($firstParameter !== null && !$firstParameter->getType()->isSuperTypeOf($acceptType)->yes()) {
+			if ($firstParameter !== null && !$firstParameter->getType()->accepts($acceptType, true)->yes()) {
 				$errorCollector?->addError(
 					sprintf(
 						'The "converters" option in $%s of %s::%s() contains a callable where the first parameter is %s, but it must be %s or its supertype.',

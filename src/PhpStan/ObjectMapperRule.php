@@ -198,7 +198,7 @@ final readonly class ObjectMapperRule implements Rule
 
 			$writableType = $propertyToWrite instanceof ExtendedParameterReflection ? $propertyToWrite->getType() : $propertyToWrite->getWritableType();
 
-			if (!$writableType->isSuperTypeOf($propertyTypeToRead)->yes()) {
+			if (!$writableType->accepts($propertyTypeToRead, true)->yes()) {
 				$builder = RuleErrorBuilder::message(sprintf(
 					'Incompatible types for property %s::$%s: %s is not assignable to %s.',
 					$targetClassReflection->getName(),

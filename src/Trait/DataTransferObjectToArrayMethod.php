@@ -10,7 +10,7 @@ use Shredio\ObjectMapper\Helper\ConverterLookup;
  * @phpstan-type ConverterType array{ class-string, ConverterCallback }
  * @phpstan-type OptionsType array{ values?: array<non-empty-string, mixed>, omit?: list<non-empty-string>, pick?: list<non-empty-string>, deep?: bool, converters?: list<ConverterType> }
  */
-trait DataTransferObjectMethods
+trait DataTransferObjectToArrayMethod
 {
 
 	/**

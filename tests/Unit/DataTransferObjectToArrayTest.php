@@ -6,7 +6,7 @@ use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
 use Shredio\ObjectMapper\MutableDataTransferObject;
 
-final class DataTransferObjectTest extends TestCase
+final class DataTransferObjectToArrayTest extends TestCase
 {
 
 	public function testToArrayBasic(): void

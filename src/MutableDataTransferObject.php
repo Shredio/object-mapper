@@ -2,9 +2,9 @@
 
 namespace Shredio\ObjectMapper;
 
-use Shredio\ObjectMapper\Trait\DataTransferObjectMethods;
+use Shredio\ObjectMapper\Trait\DataTransferObjectToArrayMethod;
 
 class MutableDataTransferObject implements ConvertableToArray
 {
-	use DataTransferObjectMethods;
+	use DataTransferObjectToArrayMethod;
 }

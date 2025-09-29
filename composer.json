@@ -4,7 +4,7 @@
 	"license": "MIT",
 	"require": {
 		"php": ">=8.3",
-		"shredio/phpstan-helpers": "^1.0.1"
+		"shredio/phpstan-helpers": "^1.0.3"
 	},
 	"autoload": {
 		"psr-4": {

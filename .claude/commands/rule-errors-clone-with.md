@@ -1,4 +1,4 @@
-Run command `composer test tests/Unit/Rule/ObjectMapperRuleTest.php` and fix the analyse errors in the second argument of `$this->analyse(...)` method in test file so that the test passes.
+Run command `vendor/bin/phpunit tests/Unit/Rule/DataTransferObjectCloneWithRuleTest.php` and fix the analyse errors in the second argument of `$this->analyse(...)` method in test file so that the test passes.
 
 The test cases are correct, but the error messages in the second argument of `$this->analyse(...)` do not match the actual errors produced by the analyser. Update the error messages to reflect the current state of the code being analysed.
 

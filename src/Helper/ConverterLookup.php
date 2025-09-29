@@ -2,11 +2,11 @@
 
 namespace Shredio\ObjectMapper\Helper;
 
-use Shredio\ObjectMapper\Trait\DataTransferObjectMethods;
+use Shredio\ObjectMapper\Trait\DataTransferObjectToArrayMethod;
 
 /**
- * @phpstan-import-type ConverterType from DataTransferObjectMethods
- * @phpstan-import-type ConverterCallback from DataTransferObjectMethods
+ * @phpstan-import-type ConverterType from DataTransferObjectToArrayMethod
+ * @phpstan-import-type ConverterCallback from DataTransferObjectToArrayMethod
  */
 final readonly class ConverterLookup
 {
