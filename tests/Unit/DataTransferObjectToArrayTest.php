@@ -89,11 +89,7 @@ final class DataTransferObjectToArrayTest extends TestCase
 			'pick' => [],
 		]);
 
-		$this->assertSame([
-			'id' => 1,
-			'name' => 'Test',
-			'isActive' => false,
-		], $result);
+		$this->assertSame([], $result);
 	}
 
 	public function testToArrayWithDeepDisabled(): void

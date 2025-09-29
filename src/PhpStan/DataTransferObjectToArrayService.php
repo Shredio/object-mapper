@@ -14,15 +14,16 @@ use PHPStan\Type\VerbosityLevel;
 use Shredio\ObjectMapper\Attribute\ToArraySkipProperties;
 use Shredio\ObjectMapper\ConvertableToArray;
 use Shredio\ObjectMapper\Exception\InvalidExtensionTypeException;
-use Shredio\ObjectMapper\Helper\PropertyPicker;
 use Shredio\ObjectMapper\PhpStan\Error\ErrorCollector;
+use Shredio\PhpStanHelpers\Exception\CannotCombinePickWithOmitException;
 use Shredio\PhpStanHelpers\Exception\EmptyTypeException;
 use Shredio\PhpStanHelpers\Exception\InvalidTypeException;
 use Shredio\PhpStanHelpers\Exception\NonConstantTypeException;
+use Shredio\PhpStanHelpers\Helper\PropertyPicker;
 use Shredio\PhpStanHelpers\PhpStanReflectionHelper;
 
 /**
- * @phpstan-type OptionsType array{ values: array<non-empty-string, Type>, deep: bool, converters: list<DataTransferObjectConverter>, pick: list<non-empty-string>, omit: list<non-empty-string> }
+ * @phpstan-type OptionsType array{ values: array<non-empty-string, Type>, deep: bool, converters: list<DataTransferObjectConverter>, pick: list<non-empty-string>|null, omit: list<non-empty-string>|null }
  */
 final class DataTransferObjectToArrayService
 {
@@ -93,25 +94,27 @@ final class DataTransferObjectToArrayService
 	{
 		$skipProperties = $this->parseSkipPropertiesFromAttribute($classReflection);
 		$values = $options['values'];
-		$picker = new PropertyPicker($options['pick'], $options['omit']);
+		try {
+			$picker = new PropertyPicker($options['pick'], $options['omit']);
+		} catch (CannotCombinePickWithOmitException) {
+			$picker = PropertyPicker::pick($options['pick']); // should not happen
+		}
+
 		$newOptions = [
 			'values' => [],
 			'deep' => $options['deep'],
 			'converters' => $options['converters'],
-			'pick' => [],
-			'omit' => [],
+			'pick' => null,
+			'omit' => null,
 		];
 
 		$builder = ConstantArrayTypeBuilder::createEmpty();
-		$selectedProperties = $this->reflectionHelper->getReadablePropertiesFromReflection($classReflection);
+		$selectedProperties = $this->reflectionHelper->getReadablePropertiesFromReflection($classReflection, $picker);
 		foreach ($selectedProperties as $propertyName => $reflectionProperty) {
 			if (isset($values[$propertyName])) {
 				continue;
 			}
 			if (isset($skipProperties[$propertyName])) {
-				continue;
-			}
-			if (!$picker->shouldPick($propertyName)) {
 				continue;
 			}
 
@@ -277,7 +280,7 @@ final class DataTransferObjectToArrayService
 			if (isset($options['omit'])) {
 				$omit = $this->reflectionHelper->getNonEmptyStringsFromConstantArrayType($options['omit']);
 			} else {
-				$omit = [];
+				$omit = null;
 			}
 		} catch (InvalidTypeException|NonConstantTypeException) {
 			$errorCollector?->addError(
@@ -300,7 +303,7 @@ final class DataTransferObjectToArrayService
 			if (isset($options['pick'])) {
 				$pick = $this->reflectionHelper->getNonEmptyStringsFromConstantArrayType($options['pick']);
 			} else {
-				$pick = [];
+				$pick = null;
 			}
 		} catch (InvalidTypeException|NonConstantTypeException) {
 			$errorCollector?->addError(
@@ -318,7 +321,7 @@ final class DataTransferObjectToArrayService
 			$pick = [];
 		}
 
-		if ($pick !== [] && $omit !== []) {
+		if ($pick !== null && $omit !== null) {
 			$errorCollector?->addError(
 				sprintf('The "pick" and "omit" options in $%s of %s::%s() cannot be used together.',
 					self::OptionsName,
@@ -500,7 +503,7 @@ final class DataTransferObjectToArrayService
 	 */
 	private function getDefaultOptions(): array
 	{
-		return ['values' => [], 'deep' => false, 'converters' => [], 'omit' => [], 'pick' => []];
+		return ['values' => [], 'deep' => false, 'converters' => [], 'omit' => null, 'pick' => null];
 	}
 
 }

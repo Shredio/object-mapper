@@ -22,8 +22,8 @@ trait DataTransferObjectToArrayMethod
 		/** @var array<non-empty-string, mixed> $values */
 		$values = get_object_vars($this);
 		// 1. Omit and pick properties
-		$values = $this->omitProperties($values, $options['omit'] ?? []);
-		$values = $this->pickProperties($values, $options['pick'] ?? []);
+		$values = $this->omitProperties($values, $options['omit'] ?? null);
+		$values = $this->pickProperties($values, $options['pick'] ?? null);
 
 		// 2. Remove static values from conversion
 		//    (they will be added back later, after conversion)
@@ -100,11 +100,15 @@ trait DataTransferObjectToArrayMethod
 
 	/**
 	 * @param array<non-empty-string, mixed> $values
-	 * @param list<non-empty-string> $omit
+	 * @param list<non-empty-string>|null $omit
 	 * @return array<non-empty-string, mixed>
 	 */
-	private function omitProperties(array $values, array $omit): array
+	private function omitProperties(array $values, ?array $omit): array
 	{
+		if ($omit === null) {
+			return $values;
+		}
+
 		foreach ($omit as $name) {
 			if (array_key_exists($name, $values)) {
 				unset($values[$name]);
@@ -116,12 +120,12 @@ trait DataTransferObjectToArrayMethod
 
 	/**
 	 * @param array<non-empty-string, mixed> $values
-	 * @param list<non-empty-string> $pick
+	 * @param list<non-empty-string>|null $pick
 	 * @return array<non-empty-string, mixed>
 	 */
-	private function pickProperties(array $values, array $pick): array
+	private function pickProperties(array $values, ?array $pick): array
 	{
-		if ($pick === []) {
+		if ($pick === null) {
 			return $values;
 		}
 

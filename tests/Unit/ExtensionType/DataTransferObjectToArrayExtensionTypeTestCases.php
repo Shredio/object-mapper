@@ -156,7 +156,7 @@ final readonly class DataTransferObjectToArrayExtensionTypeTestCases
 
 	public function testEmptyPick(): void
 	{
-		assertType('array{id: int}', (new SinglePropertyObject())->toArray([
+		assertType('array{}', (new SinglePropertyObject())->toArray([
 			'pick' => [],
 		]));
 	}
