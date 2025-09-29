@@ -203,12 +203,14 @@ final readonly class PhpStanOptionsParser
 		}
 
 		$return = [];
+		$index = -1;
 		foreach ($constantListValues as $innerType) {
+			$index++;
 			if (!$innerType->isList()->yes()) {
 				$this->errorReporter->error();
 				continue; // covered by another rule
 			}
-
+			
 			try {
 				/** @var list<Type> $innerValueTypes */
 				$innerValueTypes = iterator_to_array($this->reflectionHelper->getValueTypesFromConstantList($innerType), false);
@@ -247,7 +249,8 @@ final readonly class PhpStanOptionsParser
 			$count = count($acceptTypeClassNames);
 			if ($count === 0) {
 				$this->errorReporter->addError(
-					sprintf('The "%s" option in $%s of %s::%s() contains a class-string that does not specify any class.',
+					sprintf('The #%d key of "%s" option in $%s of %s::%s() contains a class-string that does not specify any class.',
+						$index,
 						$optionName,
 						$this->optionsName,
 						$this->className,
@@ -259,7 +262,8 @@ final readonly class PhpStanOptionsParser
 			}
 			if ($count > 1) {
 				$this->errorReporter->addError(
-					sprintf('The "%s" option in $%s of %s::%s() contains a class-string with multiple possible classes (%s), but only one is supported.',
+					sprintf('The #%d key of "%s" option in $%s of %s::%s() contains a class-string with multiple possible classes (%s), but only one is supported.',
+						$index,
 						$optionName,
 						$this->optionsName,
 						$this->className,
@@ -272,7 +276,18 @@ final readonly class PhpStanOptionsParser
 			}
 
 			if (!$callbackType->isCallable()->yes()) {
-				$this->errorReporter->error();
+				$this->errorReporter->addError(
+					sprintf('The #%d key of "%s" option in $%s of %s::%s() must be a callable(%s): mixed, but %s given.',
+						$index,
+						$optionName,
+						$this->optionsName,
+						$this->className,
+						$this->methodName,
+						$acceptType->describe(VerbosityLevel::typeOnly()),
+						$callbackType->describe(VerbosityLevel::typeOnly()),
+					),
+					sprintf('options.%s.notCallable', $optionName),
+				);
 				continue;
 			}
 
@@ -284,7 +299,8 @@ final readonly class PhpStanOptionsParser
 			}
 			if ($count !== 1) {
 				$this->errorReporter->addError(
-					sprintf('The "%s" option in $%s of %s::%s() contains a callable with %d variants, but only one is supported.',
+					sprintf('The #%d key of "%s" option in $%s of %s::%s() contains a callable with %d variants, but only one is supported.',
+						$index,
 						$optionName,
 						$this->optionsName,
 						$this->className,
@@ -300,7 +316,8 @@ final readonly class PhpStanOptionsParser
 			if ($firstParameter !== null && !$firstParameter->getType()->accepts($acceptType, true)->yes()) {
 				$this->errorReporter->addError(
 					sprintf(
-						'The "%s" option in $%s of %s::%s() contains a callable where the first parameter is %s, but it must be %s or its supertype.',
+						'The #%d key of "%s" option in $%s of %s::%s() contains a callable where the first parameter is %s, but it must be %s or its supertype.',
+						$index,
 						$optionName,
 						$this->optionsName,
 						$this->className,

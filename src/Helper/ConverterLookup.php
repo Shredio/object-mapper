@@ -36,7 +36,7 @@ final readonly class ConverterLookup
 	private function tryToConvert(mixed $value): mixed
 	{
 		if (is_object($value) && isset($this->lookup[$value::class])) {
-			return $this->lookup[$value::class]($value);
+			return $this->lookup[$value::class]($value); // @phpstan-ignore callable.nonCallable
 		}
 		return $value;
 	}

@@ -116,6 +116,10 @@ final class ObjectMapperRuleTest extends RuleTestCase
 				'• You can provide a value for it in the \'values\' or \'valuesFn\' key of $options argument.
 • The source value is from Tests\Unit\Rule\ComplexDateTimeProperty::$value.',
 			],
+			[
+				'The #0 key of "converters" option in $options of Shredio\ObjectMapper\ObjectMapper::map() must be a callable(DateTimeInterface): mixed, but true given.',
+				165,
+			],
 		]);
 	}
 

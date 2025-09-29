@@ -43,11 +43,11 @@ final class DataTransferObjectRuleTest extends RuleTestCase
 				65,
 			],
 			[
-				'The "converters" option in $options of Shredio\\ObjectMapper\\ConvertableToArray::toArray() contains a class-string with multiple possible classes (Tests\\Unit\\Rule\\AnotherTestDto, Tests\\Unit\\Rule\\TestDto), but only one is supported.',
+				'The #0 key of "converters" option in $options of Shredio\\ObjectMapper\\ConvertableToArray::toArray() contains a class-string with multiple possible classes (Tests\\Unit\\Rule\\AnotherTestDto, Tests\\Unit\\Rule\\TestDto), but only one is supported.',
 				78,
 			],
 			[
-				'The "converters" option in $options of Shredio\\ObjectMapper\\ConvertableToArray::toArray() contains a callable where the first parameter is string, but it must be Tests\\Unit\\Rule\\TestDto or its supertype.',
+				'The #0 key of "converters" option in $options of Shredio\\ObjectMapper\\ConvertableToArray::toArray() contains a callable where the first parameter is string, but it must be Tests\\Unit\\Rule\\TestDto or its supertype.',
 				89,
 			],
 			[

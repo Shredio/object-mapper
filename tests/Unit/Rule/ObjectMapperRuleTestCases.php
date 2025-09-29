@@ -160,6 +160,15 @@ final class ObjectMapperRuleTestCases
 		]);
 	}
 
+	public function invalidCallableType(): void
+	{
+		$this->mapper->map(new StringProperty(), StringProperty::class, [
+			'converters' => [
+				[DateTimeInterface::class, true]
+			],
+		]);
+	}
+
 	// valid cases
 
 	public function validUnionObjectTypesTarget(Article|Post $target): void
