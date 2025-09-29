@@ -45,18 +45,18 @@ final class ObjectMapperRuleTest extends RuleTestCase
 				'Missing value for constructor parameter Tests\Unit\Rule\ArticleExtraRequireProperty::$required.',
 				57,
 				'• Check if Tests\Unit\Rule\Article has a public property or getter for it.
-• You can provide a value for it in the \'values\' of $options argument.',
+• You can provide a value for it in the \'values\' or \'valuesFn\' of $options argument.',
 			],
 			[
 				'Incompatible types for property Tests\Unit\Rule\ArticleWrongType::$title: string is not assignable to int.',
 				62,
-				'• You can provide a value for it in the \'values\' key of $options argument.
+				'• You can provide a value for it in the \'values\' or \'valuesFn\' key of $options argument.
 • The source value is from Tests\Unit\Rule\Article::$title.',
 			],
 			[
 				'Incompatible types for property Tests\Unit\Rule\Article::$id: string is not assignable to int.',
 				67,
-				'Check the value you provided in the \'values.id\' of $options argument.',
+				'Check the value you provided in the $options argument.',
 			],
 			[
 				'The \'values\' key of $options contains an extra key \'extra\' that does not exist in the target class Tests\Unit\Rule\Article.',
@@ -65,19 +65,19 @@ final class ObjectMapperRuleTest extends RuleTestCase
 			[
 				'Incompatible types for property Tests\Unit\Rule\UnionTypeTarget::$value: bool|DateTimeInterface|float|int|stdClass|string is not assignable to bool|float|int|string.',
 				85,
-				'• You can provide a value for it in the \'values\' key of $options argument.
+				'• You can provide a value for it in the \'values\' or \'valuesFn\' key of $options argument.
 • The source value is from Tests\Unit\Rule\UnionTypeInvalidSource::$value.',
 			],
 			[
 				'Incompatible types for property Tests\Unit\Rule\SinglePropertyClass::$value: string is not assignable to int.',
 				90,
-				'Check the value you provided in the \'values.value\' of $options argument.',
+				'Check the value you provided in the $options argument.',
 			],
 			[
 				'Missing value for constructor parameter Tests\Unit\Rule\StrictNullableTarget::$description.',
 				99,
 				'• Check if Tests\Unit\Rule\DefaultValueTarget has a public property or getter for it.
-• You can provide a value for it in the \'values\' of $options argument.
+• You can provide a value for it in the \'values\' or \'valuesFn\' of $options argument.
 • The constructor parameter is nullable, but without a default value. You can allow nullable without value by setting \'allowNullableWithoutValue\' to true in the $options argument.',
 			],
 			[
@@ -87,12 +87,22 @@ final class ObjectMapperRuleTest extends RuleTestCase
 			[
 				'Incompatible types for property Tests\Unit\Rule\ArticleWrongType::$title: string is not assignable to int.',
 				113,
-				'• You can provide a value for it in the \'values\' key of $options argument.
+				'• You can provide a value for it in the \'values\' or \'valuesFn\' key of $options argument.
 • The source value is from Tests\Unit\Rule\Article::$title.',
 			],
 			[
 				'Method Shredio\ObjectMapper\ObjectMapper::map() expects the first argument to be a single object type, but got Tests\Unit\Rule\UnionTypeInvalidSource|Tests\Unit\Rule\UnionTypeValidSource.',
 				118,
+			],
+			[
+				'Incompatible types for property Tests\Unit\Rule\SinglePropertyClass::$value: string is not assignable to int.',
+				123,
+				'Check the value you provided in the $options argument.',
+			],
+			[
+				'Incompatible types for property Tests\Unit\Rule\SinglePropertyClass::$value: int|string is not assignable to int.',
+				138,
+				'Check the value you provided in the $options argument.',
 			],
 		]);
 	}

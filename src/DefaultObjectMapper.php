@@ -6,17 +6,26 @@ use ReflectionClass;
 use ReflectionProperty;
 use Shredio\ObjectMapper\Exception\LogicException;
 
-/**
- * @phpstan-import-type OptionsType from ObjectMapper
- */
 final readonly class DefaultObjectMapper implements ObjectMapper
 {
 
+	/**
+	 * @param array{ values?: array<non-empty-string, mixed>, valuesFn?: array<non-empty-string, callable(object $source): mixed>, allowNullableWithoutValue?: bool } $options
+	 */
 	public function map(object $source, string|object $target, array $options = []): object
 	{
 		$sourceClassName = $source::class;
+
 		/** @var array<non-empty-string, mixed> $values */
-		$values = array_merge(get_object_vars($source), $options['values'] ?? []);
+		$values = get_object_vars($source);
+
+		if (isset($options['valuesFn'])) {
+			foreach ($options['valuesFn'] as $name => $callback) {
+				$values[$name] = $callback($source);
+			}
+		}
+
+		$values = array_merge($values, $options['values'] ?? []);
 
 		$reflectionClass = new ReflectionClass($target);
 		if (is_string($target)) {
@@ -52,12 +61,13 @@ final readonly class DefaultObjectMapper implements ObjectMapper
 	}
 
 	/**
-	 * @template T of object
-	 * @param class-string $sourceClassName
-	 * @param ReflectionClass<T> $reflectionClass
+	 * @template TSource of object
+	 * @template TTarget of object
+	 * @param class-string<TSource> $sourceClassName
+	 * @param ReflectionClass<TTarget> $reflectionClass
 	 * @param array<non-empty-string, mixed> $values
-	 * @param OptionsType $options
-	 * @return T
+	 * @param array{ values?: array<non-empty-string, mixed>, valuesFn?: array<non-empty-string, callable(TSource $object): mixed>, allowNullableWithoutValue?: bool } $options
+	 * @return TTarget
 	 */
 	private function createInstance(string $sourceClassName, ReflectionClass $reflectionClass, array &$values, array $options = []): object
 	{

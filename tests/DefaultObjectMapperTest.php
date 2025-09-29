@@ -284,6 +284,165 @@ final class DefaultObjectMapperTest extends TestCase
 		$this->assertSame(20, $results[1]->age);
 	}
 
+	public function testMapWithValuesFnBasic(): void
+	{
+		$source = new SimpleSource();
+		$source->name = 'John';
+
+		$result = $this->mapper->map($source, SimpleTarget::class, [
+			'valuesFn' => [
+				'age' => fn(object $source): int => 25
+			]
+		]);
+
+		$this->assertSame('John', $result->name);
+		$this->assertSame(25, $result->age);
+	}
+
+	public function testMapWithValuesFnAccessingSourceProperties(): void
+	{
+		$source = new SimpleSource();
+		$source->name = 'Alice';
+		$source->age = 30;
+
+		$result = $this->mapper->map($source, SimpleTarget::class, [
+			'valuesFn' => [
+				'name' => fn(object $source): string => strtoupper($source->name),
+				'age' => fn(object $source): int => $source->age * 2
+			]
+		]);
+
+		$this->assertSame('ALICE', $result->name);
+		$this->assertSame(60, $result->age);
+	}
+
+	public function testMapWithValuesFnAndRegularValues(): void
+	{
+		$source = new SimpleSource();
+		$source->name = 'Bob';
+		$source->age = 25;
+
+		$result = $this->mapper->map($source, SimpleTarget::class, [
+			'valuesFn' => [
+				'name' => fn(object $source): string => 'From Function'
+			],
+			'values' => [
+				'name' => 'From Values',
+				'age' => 99
+			]
+		]);
+
+		$this->assertSame('From Values', $result->name);
+		$this->assertSame(99, $result->age);
+	}
+
+	public function testMapWithValuesFnOverridingSourceProperties(): void
+	{
+		$source = new SimpleSource();
+		$source->name = 'Charlie';
+		$source->age = 35;
+
+		$result = $this->mapper->map($source, SimpleTarget::class, [
+			'valuesFn' => [
+				'age' => fn(object $source): int => 100
+			]
+		]);
+
+		$this->assertSame('Charlie', $result->name);
+		$this->assertSame(100, $result->age);
+	}
+
+	public function testMapWithValuesFnForConstructorParameters(): void
+	{
+		$source = new SimpleSource();
+		$source->name = 'David';
+
+		$result = $this->mapper->map($source, ConstructorTarget::class, [
+			'valuesFn' => [
+				'id' => fn(object $source): int => 777
+			]
+		]);
+
+		$this->assertInstanceOf(ConstructorTarget::class, $result);
+		$this->assertSame(777, $result->id);
+		$this->assertSame('David', $result->name);
+	}
+
+	public function testMapWithValuesFnComplexScenario(): void
+	{
+		$source = new ComplexSource();
+		$source->name = 'Eve';
+		$source->value = 50;
+		$source->extraData = 'ignored';
+
+		$result = $this->mapper->map($source, ComplexTarget::class, [
+			'valuesFn' => [
+				'description' => fn(object $source): string => sprintf('Generated for %s', $source->name),
+				'value' => fn(object $source): int => $source->value + 10
+			],
+			'values' => [
+				'value' => 200
+			]
+		]);
+
+		$this->assertSame('Eve', $result->name);
+		$this->assertSame(200, $result->value);
+		$this->assertSame('Generated for Eve', $result->description);
+	}
+
+	public function testMapManyWithValuesFn(): void
+	{
+		$source1 = new SimpleSource();
+		$source1->name = 'First';
+		$source1->age = 10;
+
+		$source2 = new SimpleSource();
+		$source2->name = 'Second';
+		$source2->age = 20;
+
+		$sources = [$source1, $source2];
+		$results = $this->mapper->mapMany($sources, SimpleTarget::class, [
+			'valuesFn' => [
+				'age' => fn(object $source): int => $source->age * 3
+			]
+		]);
+
+		$this->assertCount(2, $results);
+		$this->assertSame('First', $results[0]->name);
+		$this->assertSame(30, $results[0]->age);
+		$this->assertSame('Second', $results[1]->name);
+		$this->assertSame(60, $results[1]->age);
+	}
+
+	public function testMapWithEmptyValuesFn(): void
+	{
+		$source = new SimpleSource();
+		$source->name = 'Frank';
+		$source->age = 40;
+
+		$result = $this->mapper->map($source, SimpleTarget::class, [
+			'valuesFn' => []
+		]);
+
+		$this->assertSame('Frank', $result->name);
+		$this->assertSame(40, $result->age);
+	}
+
+	public function testMapWithValuesFnReturningNull(): void
+	{
+		$source = new SimpleSource();
+		$source->name = 'Grace';
+
+		$result = $this->mapper->map($source, NullableTarget::class, [
+			'valuesFn' => [
+				'description' => fn(object $source): ?string => null
+			]
+		]);
+
+		$this->assertSame('Grace', $result->name);
+		$this->assertNull($result->description);
+	}
+
 }
 
 final class SimpleSource

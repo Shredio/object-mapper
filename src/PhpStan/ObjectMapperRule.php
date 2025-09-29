@@ -148,7 +148,7 @@ final readonly class ObjectMapperRule implements Rule
 		}
 
 		try {
-			$staticValues = $this->getStaticValues($options);
+			$staticValues = $this->getStaticValues($scope, $options);
 			$allowNullableWithoutValue = $this->getAllowNullableWithoutValue($options);
 		} catch (RuleErrorException $e) {
 			return $e->ruleErrors;
@@ -194,7 +194,7 @@ final readonly class ObjectMapperRule implements Rule
 				))
 					->identifier($this->id($isParameter ? 'missingConstructorParameter' : 'missingProperty'))
 					->tip(sprintf('Check if %s has a public property or getter for it.', $sourceClassReflection->getName()))
-					->addTip('You can provide a value for it in the \'values\' of $options argument.');
+					->addTip('You can provide a value for it in the \'values\' or \'valuesFn\' of $options argument.');
 
 				if ($isNullable) {
 					$builder->addTip(sprintf(
@@ -221,10 +221,10 @@ final readonly class ObjectMapperRule implements Rule
 					->identifier($this->id('incompatibleProperty'));
 
 				if (!$isStaticValue) {
-					$builder->tip('You can provide a value for it in the \'values\' key of $options argument.');
+					$builder->tip('You can provide a value for it in the \'values\' or \'valuesFn\' key of $options argument.');
 					$builder->addTip(sprintf('The source value is from %s::$%s.', $sourceClassReflection->getName(), $propertyToWrite->getName()));
 				} else {
-					$builder->tip(sprintf('Check the value you provided in the \'values.%s\' of $options argument.', $propertyToWrite->getName()));
+					$builder->tip('Check the value you provided in the $options argument.');
 				}
 
 				$errors[] = $builder->build();
@@ -255,14 +255,18 @@ final readonly class ObjectMapperRule implements Rule
 	 *
 	 * @throws RuleErrorException
 	 */
-	private function getStaticValues(array $options): array
+	private function getStaticValues(Scope $scope, array $options): array
 	{
 		if (!isset($options['values'])) {
-			return [];
+			return $this->getStaticValuesFn($scope, $options);
 		}
 
 		try {
-			return $this->reflectionHelper->getNonEmptyStringKeyWithTypeFromConstantArray($options['values']);
+			return $this->getStaticValuesFn(
+				$scope,
+				$options,
+				$this->reflectionHelper->getNonEmptyStringKeyWithTypeFromConstantArray($options['values']),
+			);
 		} catch (InvalidTypeException|NonConstantTypeException) {
 			throw new RuleErrorException([
 				RuleErrorBuilder::message(sprintf(
@@ -273,6 +277,54 @@ final readonly class ObjectMapperRule implements Rule
 					->build(),
 			]);
 		}
+	}
+
+	/**
+	 * @param array<string, Type> $options
+	 * @param array<non-empty-string, Type> $staticValues
+	 * @return array<non-empty-string, Type>
+	 *
+	 * @throws RuleErrorException
+	 */
+	private function getStaticValuesFn(Scope $scope, array $options, array $staticValues = []): array
+	{
+		if (!isset($options['valuesFn'])) {
+			return $staticValues;
+		}
+
+		try {
+			$values = $this->reflectionHelper->getNonEmptyStringKeyWithTypeFromConstantArray($options['valuesFn']);
+		} catch (InvalidTypeException|NonConstantTypeException) {
+			throw new RuleErrorException([
+				RuleErrorBuilder::message(sprintf(
+					'The "valuesFn" option passed must be a constant array, but got %s.',
+					$options['valuesFn']->describe(VerbosityLevel::typeOnly()),
+				))
+					->identifier($this->id('invalidValuesFn'))
+					->build(),
+			]);
+		}
+
+		foreach ($values as $key => $type) {
+			if (isset($staticValues[$key])) {
+				throw new RuleErrorException([
+					RuleErrorBuilder::message(sprintf(
+						'The "values" and "valuesFn" options passed both contain the key \'%s\'. Each key can only be present in one of the two.',
+						$key,
+					))
+						->identifier($this->id('duplicateValuesKey'))
+						->build(),
+				]);
+			}
+
+			$types = [];
+			foreach ($type->getCallableParametersAcceptors($scope) as $parametersAcceptor) {
+				$types[] = $parametersAcceptor->getReturnType();
+			}
+			$staticValues[$key] = TypeCombinator::union(...$types);
+		}
+
+		return $staticValues;
 	}
 
 	/**

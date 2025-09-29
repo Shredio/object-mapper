@@ -2,26 +2,26 @@
 
 namespace Shredio\ObjectMapper;
 
-/**
- * @phpstan-type OptionsType array{ values?: array<non-empty-string, mixed>, allowNullableWithoutValue?: bool }
- */
 interface ObjectMapper
 {
 
 	/**
-	 * @template T of object
-	 * @param class-string<T>|T $target
-	 * @param OptionsType $options
-	 * @return T
+	 * @template TSource of object
+	 * @template TTarget of object
+	 * @param TSource $source
+	 * @param class-string<TTarget>|TTarget $target
+	 * @param array{ values?: array<non-empty-string, mixed>, valuesFn?: array<non-empty-string, callable(TSource $object): mixed>, allowNullableWithoutValue?: bool } $options
+	 * @return TTarget
 	 */
 	public function map(object $source, string|object $target, array $options = []): object;
 
 	/**
-	 * @template T of object
-	 * @param iterable<object> $sources
-	 * @param class-string<T> $target
-	 * @param OptionsType $options
-	 * @return list<T>
+	 * @template TSource of object
+	 * @template TTarget of object
+	 * @param iterable<TSource> $sources
+	 * @param class-string<TTarget> $target
+	 * @param array{ values?: array<non-empty-string, mixed>, valuesFn?: array<non-empty-string, callable(TSource $object): mixed>, allowNullableWithoutValue?: bool } $options
+	 * @return list<TTarget>
 	 */
 	public function mapMany(iterable $sources, string $target, array $options = []): array;
 

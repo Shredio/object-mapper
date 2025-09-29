@@ -118,6 +118,30 @@ final class ObjectMapperRuleTestCases
 		$this->mapper->mapMany([$source], UnionTypeTarget::class);
 	}
 
+	public function wrongValueTypeFromCallbackForProperty(): void
+	{
+		$this->mapper->map(new SinglePropertyClass(), SinglePropertyClass::class, [
+			'valuesFn' => [
+				'value' => fn () => 'string-instead-of-int',
+			],
+		]);
+	}
+
+	public function wrongValueUnionTypeFromCallbackForProperty(): void
+	{
+		if (mt_rand(0, 1) === 1) {
+			$callback = fn () => 'string-instead-of-int';
+		} else {
+			$callback = fn () => 15;
+		}
+
+		$this->mapper->map(new SinglePropertyClass(), SinglePropertyClass::class, [
+			'valuesFn' => [
+				'value' => $callback,
+			],
+		]);
+	}
+
 	// valid cases
 
 	public function validUnionObjectTypesTarget(Article|Post $target): void
@@ -169,6 +193,24 @@ final class ObjectMapperRuleTestCases
 	{
 		$this->mapper->map(new DefaultValueTarget(), StrictNullableTarget::class, [
 			'allowNullableWithoutValue' => true,
+		]);
+	}
+
+	public function validValueTypeForProperty(): void
+	{
+		$this->mapper->map(new SinglePropertyClass(), SinglePropertyClass::class, [
+			'values' => [
+				'value' => 15,
+			],
+		]);
+	}
+
+	public function validValueTypeFromCallbackForProperty(): void
+	{
+		$this->mapper->map(new SinglePropertyClass(), SinglePropertyClass::class, [
+			'valuesFn' => [
+				'value' => fn () => 15,
+			],
 		]);
 	}
 
