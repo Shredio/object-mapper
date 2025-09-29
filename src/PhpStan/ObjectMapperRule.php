@@ -25,6 +25,7 @@ final readonly class ObjectMapperRule implements Rule
 
 	private const string ClassName = ObjectMapper::class;
 	private const string MethodName = 'map';
+	private const string MethodNameMany = 'mapMany';
 
 	public function __construct(
 		private PhpStanReflectionHelper $reflectionHelper,
@@ -55,11 +56,22 @@ final readonly class ObjectMapperRule implements Rule
 		}
 
 		$methodNameNode = $node->name;
-		if (!$methodNameNode instanceof Node\Identifier || $methodNameNode->name !== self::MethodName) {
+		if (!$methodNameNode instanceof Node\Identifier) {
+			return [];
+		}
+		if ($methodNameNode->name === self::MethodName) {
+			$sourceType = $scope->getType($sourceArg->value);
+		} else if ($methodNameNode->name === self::MethodNameMany) {
+			$iterableType = $scope->getType($sourceArg->value);
+			if (!$iterableType->isIterable()->yes()) {
+				return []; // covered by another rule
+			}
+
+			$sourceType = $iterableType->getIterableValueType();
+		} else {
 			return [];
 		}
 
-		$sourceType = $scope->getType($sourceArg->value);
 		$targetType = $scope->getType($targetArg->value);
 		if ($targetType->isClassString()->yes()) {
 			$targetClassReflections = $targetType->getClassStringObjectType()->getObjectClassReflections();

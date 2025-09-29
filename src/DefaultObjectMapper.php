@@ -41,6 +41,16 @@ final readonly class DefaultObjectMapper implements ObjectMapper
 		return $object;
 	}
 
+	public function mapMany(iterable $sources, string $target, array $options = []): array
+	{
+		$result = [];
+		foreach ($sources as $source) {
+			$result[] = $this->map($source, $target, $options);
+		}
+
+		return $result;
+	}
+
 	/**
 	 * @template T of object
 	 * @param class-string $sourceClassName

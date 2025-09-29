@@ -215,6 +215,75 @@ final class DefaultObjectMapperTest extends TestCase
 		$this->assertSame('Added via options', $result->description);
 	}
 
+	public function testMapManyWithSimpleObjects(): void
+	{
+		$source1 = new SimpleSource();
+		$source1->name = 'John';
+		$source1->age = 30;
+
+		$source2 = new SimpleSource();
+		$source2->name = 'Jane';
+		$source2->age = 25;
+
+		$sources = [$source1, $source2];
+		$results = $this->mapper->mapMany($sources, SimpleTarget::class);
+
+		$this->assertCount(2, $results);
+		$this->assertInstanceOf(SimpleTarget::class, $results[0]);
+		$this->assertInstanceOf(SimpleTarget::class, $results[1]);
+		$this->assertSame('John', $results[0]->name);
+		$this->assertSame(30, $results[0]->age);
+		$this->assertSame('Jane', $results[1]->name);
+		$this->assertSame(25, $results[1]->age);
+	}
+
+	public function testMapManyWithEmptyArray(): void
+	{
+		$results = $this->mapper->mapMany([], SimpleTarget::class);
+
+		$this->assertSame([], $results);
+	}
+
+	public function testMapManyWithOptions(): void
+	{
+		$source1 = new SimpleSource();
+		$source1->name = 'Alice';
+
+		$source2 = new SimpleSource();
+		$source2->name = 'Bob';
+
+		$sources = [$source1, $source2];
+		$results = $this->mapper->mapMany($sources, SimpleTarget::class, [
+			'values' => ['age' => 40]
+		]);
+
+		$this->assertCount(2, $results);
+		$this->assertSame('Alice', $results[0]->name);
+		$this->assertSame(40, $results[0]->age);
+		$this->assertSame('Bob', $results[1]->name);
+		$this->assertSame(40, $results[1]->age);
+	}
+
+	public function testMapManyWithIterator(): void
+	{
+		$source1 = new SimpleSource();
+		$source1->name = 'First';
+		$source1->age = 10;
+
+		$source2 = new SimpleSource();
+		$source2->name = 'Second';
+		$source2->age = 20;
+
+		$iterator = new \ArrayIterator([$source1, $source2]);
+		$results = $this->mapper->mapMany($iterator, SimpleTarget::class);
+
+		$this->assertCount(2, $results);
+		$this->assertSame('First', $results[0]->name);
+		$this->assertSame(10, $results[0]->age);
+		$this->assertSame('Second', $results[1]->name);
+		$this->assertSame(20, $results[1]->age);
+	}
+
 }
 
 final class SimpleSource

@@ -16,4 +16,13 @@ interface ObjectMapper
 	 */
 	public function map(object $source, string|object $target, array $options = []): object;
 
+	/**
+	 * @template T of object
+	 * @param iterable<object> $sources
+	 * @param class-string<T> $target
+	 * @param OptionsType $options
+	 * @return list<T>
+	 */
+	public function mapMany(iterable $sources, string $target, array $options = []): array;
+
 }

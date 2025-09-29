@@ -108,6 +108,16 @@ final class ObjectMapperRuleTestCases
 		]);
 	}
 
+	public function wrongTypeFromMany(): void
+	{
+		$this->mapper->mapMany([new Article()], ArticleWrongType::class);
+	}
+
+	public function unionObjectTypesSourceForMany(UnionTypeValidSource|UnionTypeInvalidSource $source): void
+	{
+		$this->mapper->mapMany([$source], UnionTypeTarget::class);
+	}
+
 	// valid cases
 
 	public function validUnionObjectTypesTarget(Article|Post $target): void
@@ -116,15 +126,6 @@ final class ObjectMapperRuleTestCases
 			$this->mapper->map(new Article(), $target);
 		} else {
 			$this->mapper->map(new Post(), $target);
-		}
-	}
-
-	public function validUnionObjectTypesSource(UnionTypeValidSource|UnionTypeInvalidSource $source): void
-	{
-		if ($source instanceof UnionTypeValidSource) {
-			$this->mapper->map($source, UnionTypeTarget::class);
-		} else {
-			$this->mapper->map(new UnionTypeInvalidSource(), UnionTypeTarget::class);
 		}
 	}
 
@@ -141,6 +142,27 @@ final class ObjectMapperRuleTestCases
 	public function optionalPropertyValue(): void
 	{
 		$this->mapper->map(new EmptyClass(), SinglePropertyClass::class);
+	}
+
+	/**
+	 * @param iterable<EmptyClass> $values
+	 */
+	public function mapManyFromIterableParameter(iterable $values): void
+	{
+		$this->mapper->mapMany($values, SinglePropertyClass::class);
+	}
+
+	/**
+	 * @param array<EmptyClass> $values
+	 */
+	public function mapManyFromArrayParameter(array $values): void
+	{
+		$this->mapper->mapMany($values, SinglePropertyClass::class);
+	}
+
+	public function optionalPropertyValueMany(): void
+	{
+		$this->mapper->mapMany([new EmptyClass(), new EmptyClass()], SinglePropertyClass::class);
 	}
 
 	public function validAllowNullableWithoutValue(): void

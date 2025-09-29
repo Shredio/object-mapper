@@ -80,10 +80,14 @@ final class ObjectMapperRuleTest extends RuleTestCase
 				106,
 			],
 			[
-				'Incompatible types for property Tests\Unit\Rule\UnionTypeTarget::$value: bool|DateTimeInterface|float|int|stdClass|string is not assignable to bool|float|int|string.',
-				127,
+				'Incompatible types for property Tests\Unit\Rule\ArticleWrongType::$title: string is not assignable to int.',
+				113,
 				'• You can provide a value for it in the \'values\' key of $options argument.
-• The source value is from Tests\Unit\Rule\UnionTypeInvalidSource::$value.',
+• The source value is from Tests\Unit\Rule\Article::$title.',
+			],
+			[
+				'Method Shredio\ObjectMapper\ObjectMapper::map() expects the first argument to be a single object type, but got Tests\Unit\Rule\UnionTypeInvalidSource|Tests\Unit\Rule\UnionTypeValidSource.',
+				118,
 			],
 		]);
 	}
