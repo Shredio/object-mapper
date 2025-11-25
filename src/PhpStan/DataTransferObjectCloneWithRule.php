@@ -131,8 +131,8 @@ final readonly class DataTransferObjectCloneWithRule implements Rule
 					'Property to clone %s::$%s is expected to be of type %s, but %s given.',
 					$classReflection->getName(),
 					$parameterName,
-					$parameterType->describe(VerbosityLevel::typeOnly()),
-					$fieldsToClone[$parameterName]->describe(VerbosityLevel::typeOnly()),
+					$parameterType->describe(VerbosityLevel::precise()),
+					$fieldsToClone[$parameterName]->describe(VerbosityLevel::precise()),
 				))
 					->identifier($this->id('propertyType'))
 					->build();
