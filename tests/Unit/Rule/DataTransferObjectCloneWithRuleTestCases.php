@@ -141,6 +141,17 @@ final readonly class DataTransferObjectCloneWithRuleTestCases
 		]);
 	}
 
+	/**
+	 * @param list<IntValue> $items
+	 */
+	public function testValidListType(array $items): void
+	{
+		$object = new ListTypeDto();
+		$object->cloneWith([
+			'items' => $items,
+		]);
+	}
+
 	public function testIgnoreCloneWithOnOtherClass(): void
 	{
 		$stdClass = new \stdClass();
@@ -199,6 +210,17 @@ readonly class UnionTypesDto extends DataTransferObject
 {
 	public function __construct(
 		public string|float|int|null $name = 'default',
+	) {
+	}
+}
+
+readonly class ListTypeDto extends DataTransferObject
+{
+	/**
+	 * @param list<IntValue> $items
+	 */
+	public function __construct(
+		public array $items = [],
 	) {
 	}
 }
